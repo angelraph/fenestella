@@ -1,0 +1,45 @@
+{
+  "name": "fenestella",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "The small window on a QoreChain account: see what a leaked key can do, open a scoped EVM window, leash a key, and let dApps and agents ask for exactly what they need.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "spike": "tsx scripts/spike-window.ts",
+    "attack": "tsx scripts/attack.ts"
+  },
+  "dependencies": {
+    "@qorechain/evm": "^0.14.0",
+    "@qorechain/pqc": "^0.2.3",
+    "@qorechain/qoreseal": "^0.1.0",
+    "@qorechain/qoresign": "^0.2.0",
+    "@qorechain/qorex-types": "^0.1.0",
+    "@qorechain/sdk": "^0.14.0",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "viem": "^2.57.19"
+  },
+  "devDependencies": {
+    "@qorechain/qorex-wallet-mock": "^0.1.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "solc": "^0.8.24",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
