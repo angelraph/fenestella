@@ -1,0 +1,21 @@
+{
+  "network": "qorechain-diana",
+  "evmChainId": 9800,
+  "deployer": {
+    "cosmos": "qor18ydtk2rx0wma4csyl9353kj0z29w645daa47z9",
+    "evm": "0x391aBb28667bb7dae204f96348da4F128aed568D"
+  },
+  "deployedAt": "2026-11-14T02:18:16.511Z",
+  "contracts": {
+    "FenestellaReceipts": {
+      "address": "0xc520f7084758a3faafd2d8ffb7432c87787a1acc",
+      "txHash": "0x18a2e6669225b69c7e193c2777fcb16d33aba6089c48d6e964d7ba367e125c6f",
+      "block": "10047565"
+    },
+    "Bills": {
+      "address": "0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0",
+      "txHash": "0x1120aa567d71893b62d678d0ff637581c2baa3eaf54c212820ce0a30d3227a2c",
+      "block": "10047566"
+    }
+  }
+}

@@ -240,7 +240,7 @@ export function WindowForm({ truth, onChanged }: { truth: AccountTruth; onChange
         </div>
       ) : (
         <div className="row">
-          <button className="btn" disabled={working || built.errors.length > 0 || !built.spec} onClick={open}>
+          <button className="btn accent" disabled={working || built.errors.length > 0 || !built.spec} onClick={open}>
             {live ? "Replace window" : "Open window"}
           </button>
           <span className="faint">Signed by {signer.label} with the hybrid ML-DSA-87 signature.</span>

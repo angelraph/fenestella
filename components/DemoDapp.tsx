@@ -73,7 +73,7 @@ export function DemoDapp() {
           />
         </div>
         <div>
-          <button className="btn" onClick={ask} disabled={busy}>
+          <button className="btn accent" onClick={ask} disabled={busy}>
             {busy ? "Waiting for your decision…" : "Request a window"}
           </button>
         </div>

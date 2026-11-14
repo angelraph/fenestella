@@ -93,7 +93,7 @@ Contracts (requires [Foundry](https://getfoundry.sh)):
 
 ```bash
 cd contracts
-forge install foundry-rs/forge-std
+forge install foundry-rs/forge-std --no-git
 forge test
 ```
 
@@ -102,6 +102,8 @@ Testnet scripts. They use a throwaway key in `.keys/` (git-ignored) or `FENESTEL
 ```bash
 npm run spike      # register the ML-DSA-87 key, open a scoped window, read it back, close it
 npm run attack     # try everything the classical key alone can do; every attempt must be refused
+npx tsx scripts/deploy.ts        # deploy both contracts (after `forge build`)
+npx tsx scripts/drill.ts status  # the Q-Day Drill account: setup | proof | status
 ```
 
 The first `npm run spike` prints a new address and stops. Fund it from the [faucet](https://dashboard.qorechain.io/faucet) and run it again.
@@ -125,23 +127,30 @@ Fenestella never holds a key. With QoreX, the page sends messages and the wallet
 
 ## Status
 
-Checked on 14 November 2026.
+Checked on 14 November 2026, on `qorechain-diana`.
 
-Works:
+Works, and verified:
 
 - Reading any account on testnet and mainnet, and the exposure answer (43 unit tests).
-- The window form: presets, bounds checks, plain-words summary, the equivalent `qorechaind` command.
-- Building `MsgOpenEVMWindow` (with targets or native-only) and `MsgCloseEVMWindow`.
-- The contracts compile with solc 0.8.24. The live `pqcKeyStatus` precompile was called on testnet and answers in the shape `QorePQC.sol` expects (2,752 bytes for a registered account, 160 for an unregistered one).
+- The window lifecycle with the local signer (`npm run spike`): ML-DSA-87 registration with proof of possession, a window scoped to one contract opened, read back and closed.
+- The attacker (`npm run attack`): with only the classical key of a protected account, a native transfer, an open-window message and an EVM transfer were all refused by the chain, and the balance did not change.
+- The contracts: 20 Foundry tests pass. Both are deployed (see [deployments.testnet.json](deployments.testnet.json)):
+  - `FenestellaReceipts`: `0xc520f7084758a3faafd2d8ffb7432c87787a1acc`
+  - `Bills`: `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0`
+- The live `pqcKeyStatus` precompile answers in the shape `QorePQC.sol` expects (2,752 bytes for a registered account, 160 for an unregistered one).
+
+Testnet accounts this project uses:
+
+- Deployer and development account: `qor18ydtk2rx0wma4csyl9353kj0z29w645daa47z9`
+- Q-Day Drill account: `qor1mzv9k3qwhye6cmyqcwnj5alua529zcgfm3klug`
 
 Not verified yet:
 
-- **Signing through QoreX.** QoreX accepts dApp messages it can display and refuses the rest; its docs do not say whether a dApp may send `MsgOpenEVMWindow`. This is the first thing to test with a real wallet.
-- **The local signer end to end on testnet.** The script runs up to the funding step; the test account has not been funded yet.
+- **Signing through QoreX.** QoreX accepts dApp messages it can display and refuses the rest; its docs do not say whether a dApp may send `MsgOpenEVMWindow`. This is the next thing to test with a real wallet.
 - **The popup flow of `requestWindow()`** in a real browser.
-- **`forge test`.** The Foundry tests are written and have not been run.
+- **`pqcVerify` on chain.** `FenestellaReceipts.attest` is tested against a mock; no receipt has been written on testnet yet.
 
-Not built yet: the linked-key (spending rule) editor, the bill-payer agent, the sealed and anchored mandate, contract deployment.
+Not built yet: the linked-key (spending rule) editor, the bill-payer agent, the sealed and anchored mandate.
 
 ## Kits and credits
 

@@ -14,10 +14,20 @@ export function Lookup() {
   const [network, setNetwork] = useState<NetworkId>("testnet");
   const [error, setError] = useState<string | null>(null);
 
-  const go = (addr: string) => router.push(`/account/${addr}?network=${network}`);
+  const go = (addr: string, net: NetworkId = network) => router.push(`/account/${addr}?network=${net}`);
 
   return (
-    <div className="stack">
+    <div className="lookup-card">
+      <div className="row between">
+        <div className="seg" role="group" aria-label="Network">
+          {(["testnet", "mainnet"] as const).map((n) => (
+            <button key={n} type="button" aria-pressed={network === n} onClick={() => setNetwork(n)}>
+              {n === "testnet" ? "Testnet" : "Mainnet"}
+            </button>
+          ))}
+        </div>
+        <span className="faint">Read-only. Nothing is signed.</span>
+      </div>
       <form
         className="lookup"
         onSubmit={(e) => {
@@ -40,30 +50,22 @@ export function Lookup() {
           autoComplete="off"
           spellCheck={false}
         />
-        <select
-          className="select"
-          value={network}
-          onChange={(e) => setNetwork(e.target.value as NetworkId)}
-          aria-label="Network"
-        >
-          <option value="testnet">Testnet</option>
-          <option value="mainnet">Mainnet</option>
-        </select>
-        <button className="btn" type="submit">
+        <button className="btn accent" type="submit">
           Read account
         </button>
-        <button
-          className="btn ghost"
-          type="button"
-          disabled={wallet.busy}
-          onClick={async () => {
-            const s = wallet.signer ?? (await wallet.connectQorex(network));
-            if (s) go(s.address);
-          }}
-        >
-          {wallet.signer ? "Open my account" : "Connect QoreX"}
-        </button>
       </form>
+      <div className="or">OR</div>
+      <button
+        className="btn"
+        type="button"
+        disabled={wallet.busy}
+        onClick={async () => {
+          const s = wallet.signer ?? (await wallet.connectQorex(network));
+          if (s) go(s.address, s.network);
+        }}
+      >
+        {wallet.signer ? "Open my account" : wallet.busy ? "Connecting…" : "Connect QoreX"}
+      </button>
       {(error || wallet.error) && (
         <div className="notice err" role="alert">
           {error ?? wallet.error}

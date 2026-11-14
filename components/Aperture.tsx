@@ -1,15 +1,23 @@
 import type { ExposureLevel } from "@/lib/exposure";
 
 const COLORS: Record<ExposureLevel, string> = {
-  sealed: "#7fb58a",
-  scoped: "#f2b84b",
-  open: "#e8804a",
-  takeover: "#e2574c",
-  unknown: "#8fa3b8",
+  sealed: "#6fcfae",
+  scoped: "#f0c356",
+  open: "#ff8f4f",
+  takeover: "#ff6161",
+  unknown: "#8ea2b6",
 };
 
 /** Opening width, out of a 140-wide wall. */
 const WIDTH: Record<ExposureLevel, number> = { sealed: 0, scoped: 16, open: 64, takeover: 140, unknown: 0 };
+
+const LABEL: Record<ExposureLevel, string> = {
+  sealed: "Wall with no opening",
+  scoped: "Wall with a narrow slit",
+  open: "Wall with a wide opening",
+  takeover: "No wall left",
+  unknown: "Wall, state not known",
+};
 
 /**
  * The account drawn as a wall with one opening. The width of the opening is
@@ -24,36 +32,28 @@ export function Aperture({ level, size = 160 }: { level: ExposureLevel; size?: n
     const y = 12 + row * 20;
     const offset = row % 2 === 0 ? 0 : 18;
     for (let x = 10 - offset; x < 150; x += 36) {
-      stones.push({ x: Math.max(10, x), y, w: Math.min(34, 150 - Math.max(10, x), x + 34 - 10) });
+      const sx = Math.max(10, x);
+      stones.push({ x: sx, y, w: Math.min(x + 34, 150) - sx });
     }
   }
-  const label =
-    level === "sealed"
-      ? "Wall with no opening"
-      : level === "scoped"
-        ? "Wall with a narrow slit"
-        : level === "open"
-          ? "Wall with a wide opening"
-          : level === "takeover"
-            ? "No wall left"
-            : "Wall, state not known";
+  const id = `ap-${level}`;
 
   return (
-    <svg viewBox="0 0 160 160" width={size} height={size} role="img" aria-label={label}>
+    <svg viewBox="0 0 160 160" width={size} height={size} role="img" aria-label={LABEL[level]}>
       <defs>
-        <linearGradient id={`glow-${level}`} x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={`${id}-glow`} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor={color} stopOpacity="0.95" />
-          <stop offset="1" stopColor={color} stopOpacity="0.35" />
+          <stop offset="1" stopColor={color} stopOpacity="0.3" />
         </linearGradient>
-        <clipPath id="wall-clip">
-          <rect x="10" y="10" width="140" height="140" rx="8" />
+        <clipPath id={`${id}-clip`}>
+          <rect x="10" y="10" width="140" height="140" rx="10" />
         </clipPath>
       </defs>
-      <rect x="10" y="10" width="140" height="140" rx="8" fill="#0d0b0a" />
+      <rect x="10" y="10" width="140" height="140" rx="10" fill="#030404" />
       {level !== "takeover" && (
-        <g clipPath="url(#wall-clip)">
+        <g clipPath={`url(#${id}-clip)`}>
           {stones.map((s, i) => (
-            <rect key={i} x={s.x} y={s.y} width={Math.max(0, s.w)} height={18} rx={2} fill="#2b2520" stroke="#3a332b" strokeWidth="0.6" />
+            <rect key={i} x={s.x} y={s.y} width={Math.max(0, s.w)} height={18} rx={2.5} fill="#171b19" stroke="#262c29" strokeWidth="0.7" />
           ))}
         </g>
       )}
@@ -61,7 +61,7 @@ export function Aperture({ level, size = 160 }: { level: ExposureLevel; size?: n
         <g>
           <path
             d={`M ${left} 150 V ${52 + w / 2} A ${w / 2} ${w / 2} 0 0 1 ${left + w} ${52 + w / 2} V 150 Z`}
-            fill={`url(#glow-${level})`}
+            fill={`url(#${id}-glow)`}
           />
           <path
             d={`M ${left} 150 V ${52 + w / 2} A ${w / 2} ${w / 2} 0 0 1 ${left + w} ${52 + w / 2} V 150`}
@@ -72,28 +72,53 @@ export function Aperture({ level, size = 160 }: { level: ExposureLevel; size?: n
         </g>
       )}
       {level === "takeover" && (
-        <g clipPath="url(#wall-clip)">
-          <rect x="10" y="10" width="140" height="140" fill={`url(#glow-${level})`} opacity="0.55" />
+        <g clipPath={`url(#${id}-clip)`}>
+          <rect x="10" y="10" width="140" height="140" fill={`url(#${id}-glow)`} opacity="0.5" />
           {[0, 1, 2, 3].map((i) => (
-            <rect key={i} x={14 + i * 36} y={132 - (i % 2) * 8} width={30} height={16} rx={2} fill="#2b2520" stroke="#3a332b" strokeWidth="0.6" transform={`rotate(${i % 2 ? 7 : -5} ${29 + i * 36} 140)`} />
+            <rect
+              key={i}
+              x={14 + i * 36}
+              y={132 - (i % 2) * 8}
+              width={30}
+              height={16}
+              rx={2.5}
+              fill="#171b19"
+              stroke="#262c29"
+              strokeWidth="0.7"
+              transform={`rotate(${i % 2 ? 7 : -5} ${29 + i * 36} 140)`}
+            />
           ))}
         </g>
       )}
+      {level === "sealed" && (
+        <path d="M68 82 l9 9 l17 -19" fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      )}
       {level === "unknown" && (
-        <text x="80" y="92" textAnchor="middle" fontSize="44" fill={color} fontFamily="Georgia, serif">
+        <text x="80" y="96" textAnchor="middle" fontSize="46" fill={color} fontFamily="ui-sans-serif, system-ui, sans-serif" fontWeight="600">
           ?
         </text>
       )}
-      <rect x="10" y="10" width="140" height="140" rx="8" fill="none" stroke={color} strokeOpacity="0.55" strokeWidth="1.2" />
+      <rect x="10" y="10" width="140" height="140" rx="10" fill="none" stroke={color} strokeOpacity="0.5" strokeWidth="1.2" />
     </svg>
   );
 }
 
-export function Mark({ size = 26 }: { size?: number }) {
+/** The Fenestella mark: an angular doorway with one lit pane. */
+export function Mark({ size = 30 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true">
-      <rect x="2" y="2" width="28" height="28" rx="6" fill="#26211c" stroke="#3a332b" />
-      <path d="M13 26 V14 a3 3 0 0 1 6 0 V26 Z" fill="#f2b84b" />
+    <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true">
+      <path d="M8 19 L30 8 L56 20 V30 L32 19 L19 25.5 V51 L8 56 Z" fill="#f3eee2" />
+      <path d="M26 46.5 L33.5 43 L56 53.5 V62 Z" fill="#f3eee2" />
+      <path d="M36 27 L50 33.5 V46.5 L36 40 Z" fill="#6fcfae" />
     </svg>
+  );
+}
+
+export function Logo({ size = 30 }: { size?: number }) {
+  return (
+    <>
+      <Mark size={size} />
+      <span className="wordmark">Fenestella</span>
+    </>
   );
 }

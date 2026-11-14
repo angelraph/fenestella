@@ -196,6 +196,7 @@ export function RequestApproval() {
         <h2 style={{ marginTop: 6 }}>This site is asking for an opening on your account</h2>
       </div>
 
+      <div className="panel">
       <div className="stack">
         <span className="label">Asked by</span>
         <div className="origin-box">{origin}</div>
@@ -262,7 +263,7 @@ export function RequestApproval() {
             </div>
           )}
           <div className="row">
-            <button className="btn" disabled={phase.kind === "working" || !!blocked} onClick={approve}>
+            <button className="btn accent" disabled={phase.kind === "working" || !!blocked} onClick={approve}>
               Open this window
             </button>
             <button className="btn ghost" disabled={phase.kind === "working"} onClick={decline}>
@@ -271,6 +272,7 @@ export function RequestApproval() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
