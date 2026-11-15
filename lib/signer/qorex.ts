@@ -21,8 +21,14 @@ export function classifyQorexError(err: unknown): SignerError {
   if (lower.includes("cannot display") || lower.includes("not supported") || lower.includes("managed by the wallet")) {
     return new SignerError("refused-type", `QoreX refused this kind of message: ${text}`);
   }
-  if (lower.includes("unsupported chain") || lower.includes("network")) {
-    return new SignerError("network", `QoreX is on a different network: ${text}`);
+  if (lower.includes("does not match the active network") || lower.includes("unsupported chain") || lower.includes("network")) {
+    const onMainnet = lower.includes("qorechain-vladi");
+    return new SignerError(
+      "network",
+      onMainnet
+        ? "QoreX is set to Mainnet. The browser extension has no testnet switch: for testnet, open this site in the QoreX phone app with Settings > Use testnet (developers) on, or connect the QoreChain Dashboard wallet."
+        : `QoreX is on a different network than this page. ${text}`,
+    );
   }
   return new SignerError("chain", text);
 }

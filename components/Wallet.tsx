@@ -52,6 +52,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [picker, setPicker] = useState<{ network: NetworkId } | null>(null);
   const [wallets, setWallets] = useState<DetectedWallet[] | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [dashOpen, setDashOpen] = useState(false);
+  const [dashAddress, setDashAddress] = useState("");
+  const [dashPhrase, setDashPhrase] = useState("");
   const resolver = useRef<((a: ActiveAccount | null) => void) | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
 
@@ -103,6 +106,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     resolver.current = null;
     setPicker(null);
     setPickerError(null);
+    setDashOpen(false);
+    setDashPhrase("");
   }, []);
 
   const pick = useCallback((network: NetworkId) => {
@@ -149,6 +154,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       setPickerError(err instanceof Error ? err.message : `Could not connect ${wallet.name}.`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const connectDashboard = async () => {
+    setPickerError(null);
+    setBusy(true);
+    try {
+      const mod = await import("@/lib/signer/local");
+      const s = await mod.connectDashboardWallet(dashPhrase, dashAddress, { rest: browserEndpoints("testnet").rest });
+      setSigner(s);
+      setViewer(null);
+      setDashPhrase("");
+      settle({ address: s.address, network: s.network, label: s.label, canSign: true });
+    } catch (err) {
+      setPickerError(err instanceof Error ? err.message : "That phrase could not be used.");
     } finally {
       setBusy(false);
     }
@@ -216,6 +238,80 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
                 </li>
               ))}
             </ul>
+          )}
+
+          {picker.network === "testnet" && wallets !== null && (
+            <div className="stack">
+              <button
+                className="wallet-row"
+                disabled={busy}
+                aria-expanded={dashOpen}
+                onClick={() => {
+                  setDashOpen((v) => !v);
+                  setPickerError(null);
+                }}
+              >
+                <span className="wallet-icon" aria-hidden="true">
+                  D
+                </span>
+                <span className="wallet-text">
+                  <b>QoreChain Dashboard wallet</b>
+                  <span>Testnet. Signs with the phrase you reveal on the Dashboard</span>
+                </span>
+                <span className="pill active">Signs</span>
+              </button>
+              {dashOpen && (
+                <div className="card stack">
+                  <p>
+                    The Dashboard cannot be reached by other sites, so Fenestella signs with its recovery phrase,
+                    inside this tab. On{" "}
+                    <a href="https://dashboard.qorechain.io/wallet" target="_blank" rel="noreferrer">
+                      the Dashboard&apos;s Wallet page
+                    </a>{" "}
+                    (Testnet), find <strong>Recovery phrase</strong> and press <strong>Reveal</strong> on your wallet.
+                  </p>
+                  <div className="field">
+                    <label htmlFor="dash-addr">Your Dashboard address</label>
+                    <input
+                      id="dash-addr"
+                      className="input mono"
+                      value={dashAddress}
+                      onChange={(e) => setDashAddress(e.target.value)}
+                      placeholder="qor1…"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <span className="hint">Fenestella refuses the phrase unless it opens exactly this address.</span>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="dash-phrase">Recovery phrase</label>
+                    <textarea
+                      id="dash-phrase"
+                      className="input"
+                      rows={3}
+                      value={dashPhrase}
+                      onChange={(e) => setDashPhrase(e.target.value)}
+                      placeholder="24 words"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <span className="hint">
+                      Kept in this tab&apos;s memory only: never stored, never sent. Gone when you reload. The same
+                      address exists on mainnet, so never use a phrase that holds real QOR.
+                    </span>
+                  </div>
+                  <div>
+                    <button
+                      className="btn accent small"
+                      disabled={busy || !/^qor1[0-9a-z]{38,58}$/.test(dashAddress.trim()) || dashPhrase.trim().split(/\s+/).length < 12}
+                      onClick={() => void connectDashboard()}
+                    >
+                      {busy ? "Checking…" : "Check and connect"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {pickerError && (
