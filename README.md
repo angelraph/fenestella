@@ -138,6 +138,13 @@ Works, and verified:
   - `FenestellaReceipts`: `0xc520f7084758a3faafd2d8ffb7432c87787a1acc`
   - `Bills`: `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0`
 - From the live site with a real wallet (the QoreChain Dashboard testnet wallet, connected through the wallet picker): a plain-transfers window (5 transactions, 2 QOR, about 30 minutes) was opened on `qor1x2fqs3lpczt2yz2q2rvh0mjvft9rse30c5tv07`, read back from the chain, then closed with the console's button. Open: `26A809D636C386B6E4118501072583CEB8FBB41BF349B519BB42660EA606C245`. Close: `9DB6BDF83758857F3B6F0CEA848A316073D40568613BDE14BE4A5BE4869AE319`.
+- **The bill-paying agent, live from the site with a real wallet** (`/agent`, owner `qor1x2fqs3lpczt2yz2q2rvh0mjvft9rse30c5tv07`, 15 November 2026):
+  - Linked the owner's own agent key `0xb56d3Fa1FF61FD3067Cb84B8Aab0faA2c7fb3196` with the `evm` permission and a rule allowing only `Bills.pay`, 1 QOR a payment, 3 QOR a day: `14FF9AE4F27B0699E1DF786D3B2E9FD5651BEE17960F053DDDE11803E8474F2A`.
+  - Sealed a mandate in the browser (ML-KEM-1024 + X25519, to the agent and the owner) and anchored its SHA3-256 in a hybrid-signed self-send: `0A67AA9E11AD0A993CF24C39C1EDEE5D34585E1D16DAE84D496CFB4702014D4C`.
+  - The agent checked the anchor, opened the envelope, checked bill #3 on chain and paid it through the relayer: `7A9F06EE6FA017A934E58A51C61C3FB5F21AD73DF082F27E152C39C48D349D18`.
+  - A stolen agent key trying to send 147 QOR was refused by the chain ("per-tx limit 1000000uqor exceeded"): `8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042`.
+  - The owner's account had no EVM window open throughout. A linked key acts through `MsgExecuteEVM`, which the window does not gate; the spending rule is the leash.
+- In scripts: a mandate with its cap raised after sealing does not open (`scripts/spike-mandate.ts`), and a call by the agent to a contract the rule does not list is refused (`scripts/spike-agent.ts`, `DB059DC5EA57E83E262BE91576DAB4216EAAC90F2714FCDFFDEC6CF6CB26D6F7`).
 - The wallet picker finds QoreX, Keplr, Leap, Cosmostation and EIP-6963 wallets (checked in Chrome with QoreX, Keplr, OKX Wallet, HOT Wallet and MetaMask installed).
 - The live `pqcKeyStatus` precompile answers in the shape `QorePQC.sol` expects (2,752 bytes for a registered account, 160 for an unregistered one).
 
@@ -152,7 +159,7 @@ Not verified yet:
 - **The popup flow of `requestWindow()`** in a real browser.
 - **`pqcVerify` on chain.** `FenestellaReceipts.attest` is tested against a mock; no receipt has been written on testnet yet.
 
-Not built yet: the linked-key (spending rule) editor, the bill-payer agent, the sealed and anchored mandate.
+What the leash does not stop, by the chain's own design: a key bound by a spending rule may still send plain value to any address within the rule's caps. Here that is at most 1 QOR a payment and 3 QOR a day. Keep the caps small.
 
 ## Kits and credits
 
