@@ -10,3 +10,6 @@ contracts/cache
 contracts/broadcast
 .keys
 contracts/lib
+
+.vercel
+.env*
