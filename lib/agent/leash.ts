@@ -5,7 +5,7 @@ import {
   revokeAuthenticatorMsg,
   signAuthenticatorLinkEip191,
 } from "@qorechain/sdk";
-import { encodeFunctionData, parseAbi, toFunctionSelector, type Hex } from "viem";
+import { encodeFunctionData, hexToBytes, parseAbi, toFunctionSelector, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { ChainMessage } from "../signer/types";
 
@@ -91,7 +91,7 @@ export function createAbstractAccountMessage(owner: string): ChainMessage {
 
 /** Owner-signed: cut the agent off at once. */
 export function revokeAgentMessage(owner: string, agentEvmAddress: string): ChainMessage {
-  const pubkey = Uint8Array.from(Buffer.from(agentEvmAddress.replace(/^0x/, ""), "hex"));
+  const pubkey = hexToBytes(agentEvmAddress as Hex);
   return revokeAuthenticatorMsg({ owner, scheme: "secp256k1", pubkey }) as ChainMessage;
 }
 
@@ -132,7 +132,7 @@ export async function agentExecuteEvm(opts: {
     account: opts.account,
     to: opts.to,
     value: ((opts.valueUqor ?? 0n) * AQOR_PER_UQOR).toString(),
-    data: opts.data ? Uint8Array.from(Buffer.from(opts.data.slice(2), "hex")) : new Uint8Array(),
+    data: opts.data ? hexToBytes(opts.data) : new Uint8Array(),
     gasLimit: opts.gasLimit ?? 200_000,
     nonce: opts.nonce,
     digestVersion: opts.digestVersion,

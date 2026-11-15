@@ -21,6 +21,7 @@
     "attack": "tsx scripts/attack.ts"
   },
   "dependencies": {
+    "@noble/hashes": "^2.4.0",
     "@qorechain/evm": "^0.14.0",
     "@qorechain/pqc": "^0.2.3",
     "@qorechain/qoreseal": "^0.1.0",
@@ -31,6 +32,7 @@
     "next": "^16.4.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
     "viem": "^2.57.19"
   },
   "devDependencies": {
