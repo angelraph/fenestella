@@ -245,6 +245,9 @@ export function RequestApproval() {
       ) : !signer || signer.network !== network ? (
         <div className="stack">
           <ConnectPanel network={network} />
+          {wallet.active && !wallet.active.canSign && (
+            <span className="faint">This request needs a wallet that can sign a window.</span>
+          )}
           <button className="btn ghost" onClick={decline}>
             Decline
           </button>

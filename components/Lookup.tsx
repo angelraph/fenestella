@@ -60,24 +60,18 @@ export function Lookup() {
         type="button"
         disabled={wallet.busy}
         onClick={async () => {
-          const s = wallet.signer ?? (await wallet.connectQorex(network));
-          if (s) go(s.address, s.network);
+          const a = wallet.active ?? (await wallet.pick(network));
+          if (a) go(a.address, a.network);
         }}
       >
-        {wallet.signer ? "Open my account" : wallet.busy ? "Connecting…" : "Connect QoreX"}
+        {wallet.active ? "Open my account" : wallet.busy ? "Connecting…" : "Connect wallet"}
       </button>
+      <span className="faint" style={{ textAlign: "center" }}>
+        Finds QoreX, Keplr, Leap, Cosmostation, MetaMask, Rabby and other wallets in this browser.
+      </span>
       {(error || wallet.error) && (
         <div className="notice err" role="alert">
           {error ?? wallet.error}
-          {wallet.qorexMissing && (
-            <>
-              {" "}
-              <a href="https://qorechain.io/qorex" target="_blank" rel="noreferrer">
-                Get QoreX
-              </a>
-              . You can still read any account by address.
-            </>
-          )}
         </div>
       )}
     </div>

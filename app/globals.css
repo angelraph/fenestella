@@ -257,3 +257,17 @@ details[open] summary { margin-bottom: 10px; }
 .faq details[open] summary::after { content: "–"; }
 .faq details[open] summary { margin-bottom: 0; }
 .faq details p { padding: 0 0 18px; }
+
+/* Wallet picker */
+dialog.picker { width: min(460px, calc(100vw - 32px)); border: 1px solid var(--line-2); border-radius: var(--radius-lg); background: var(--panel); color: var(--text); padding: 22px; box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(111, 207, 174, 0.06); }
+dialog.picker[open] { display: grid; gap: 16px; }
+dialog.picker::backdrop { background: rgba(3, 4, 4, 0.72); backdrop-filter: blur(6px); }
+.wallet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.wallet-row { width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; color: var(--text); font: inherit; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.wallet-row:hover:not(:disabled) { border-color: var(--accent-line); background: var(--panel-3); }
+.wallet-row:disabled { opacity: 0.55; cursor: wait; }
+.wallet-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--panel-3); border: 1px solid var(--line-2); display: grid; place-items: center; font-family: var(--display); font-weight: 600; color: var(--accent); overflow: hidden; flex: none; }
+.wallet-icon img { width: 28px; height: 28px; border-radius: 6px; }
+.wallet-text { display: grid; flex: 1; min-width: 0; }
+.wallet-text b { font-family: var(--display); font-weight: 600; }
+.wallet-text span { color: var(--dim); font-size: 0.84rem; }
