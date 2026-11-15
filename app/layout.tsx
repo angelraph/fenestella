@@ -35,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <nav className="site-nav" aria-label="Main">
                 <Link href="/">Console</Link>
                 <Link href="/#how">How it works</Link>
+                <Link href="/agent">Agent</Link>
                 <Link href="/demo">For dApps</Link>
                 <Link href="/docs">Docs</Link>
                 <Link href="/faq">FAQ</Link>

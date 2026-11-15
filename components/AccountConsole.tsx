@@ -8,6 +8,7 @@ import { blocksToDuration, plural, unixToDate, uqorToQor } from "@/lib/format";
 import { NETWORKS, type NetworkId } from "@/lib/networks";
 import type { AccountTruth, TruthSection } from "@/lib/truth";
 import { Aperture } from "./Aperture";
+import { RulesEditor } from "./RulesEditor";
 import { WindowForm } from "./WindowForm";
 
 const LEVEL_NAME: Record<ExposureLevel, string> = {
@@ -92,7 +93,7 @@ function Facts({ t }: { t: AccountTruth }) {
   );
 }
 
-function LinkedKeys({ answer }: { answer: AccountAnswer }) {
+function LinkedKeys({ answer, onChanged }: { answer: AccountAnswer; onChanged: (a: AccountAnswer) => void }) {
   const { truth: t, exposure } = answer;
   const aa = t.abstractAccount;
   const testnetOnly = <span className="pill testnet">Testnet only</span>;
@@ -167,6 +168,7 @@ function LinkedKeys({ answer }: { answer: AccountAnswer }) {
           </div>
         </>
       )}
+      {aa.moduleEnabled && <RulesEditor truth={t} onChanged={onChanged} />}
     </section>
   );
 }
@@ -289,7 +291,7 @@ export function AccountConsole({ address, network }: { address: string; network:
       </div>
 
       <WindowForm truth={t} onChanged={setAnswer} />
-      <LinkedKeys answer={answer} />
+      <LinkedKeys answer={answer} onChanged={setAnswer} />
 
       <p className="faint">
         Read from {t.chainId} at block {Number(t.height).toLocaleString("en-US")} ({t.readAt.replace("T", " ").slice(0, 19)} UTC).

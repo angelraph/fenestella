@@ -11,7 +11,7 @@ import { executionFailures, fetchTx, waitForTx } from "../chain/tx";
 import { closeWindowMessage, openWindowMessage } from "../messages";
 import { NETWORKS } from "../networks";
 import { LocalSigner } from "../signer/local";
-import { agentAddress, agentExecuteEvm, AQOR_PER_UQOR, BILLS_ABI, payCalldata } from "./leash";
+import { agentAddress, agentExecuteEvm, agentLinkProof, AQOR_PER_UQOR, BILLS_ABI, payCalldata } from "./leash";
 import { MandateError, openMandate, verifyAnchor, type MandateTerms } from "./mandate";
 
 /**
@@ -78,14 +78,20 @@ export interface AgentInfo {
   /** The agent's QoreSeal recipient keys, base64. */
   sealRecipient: { mlkemPublicKey: string; x25519PublicKey: string };
   suggestedTerms: { perTxUqor: string; dailyUqor: string; days: number };
+  /** For `owner`: the agent's proof that it holds its key, to put in the owner's link transaction. Hex. */
+  linkProof?: { pubkey: string; possessionProof: string };
 }
 
 const b64 = (u: Uint8Array) => Buffer.from(u).toString("base64");
 
-export async function agentInfo(): Promise<AgentInfo> {
+const hex = (u: Uint8Array) => Buffer.from(u).toString("hex");
+
+export async function agentInfo(owner?: string): Promise<AgentInfo> {
   const k = await keys();
   const r = recipientOf(agentSealKeys(k.agentKey));
+  const proof = owner ? agentLinkProof(k.agentKey, owner, net.chainId) : null;
   return {
+    linkProof: proof ? { pubkey: hex(proof.pubkey), possessionProof: hex(proof.possessionProof) } : undefined,
     agent: agentAddress(k.agentKey),
     relayer: k.relayer.address,
     vendor: k.vendor.address,

@@ -61,27 +61,42 @@ export function agentAddress(agentPrivateKey: Hex): string {
 /**
  * The owner-signed messages that put the agent on its leash, in one
  * transaction: replace the account's spending rules with the agent's rule,
- * then link the agent key with the `evm` permission only. The agent proves it
- * holds its key by signing the chain's link text.
+ * then link the agent key with the `evm` permission only. `proof` is the
+ * agent's signature over the chain's link text for this account, which shows
+ * it holds the key being linked.
  */
-export function linkAgentMessages(opts: {
+export function linkAgentMessagesFromProof(opts: {
   owner: string;
   chainId: string;
-  agentPrivateKey: Hex;
+  proof: { pubkey: Uint8Array; possessionProof: Uint8Array };
   terms: LeashTerms;
 }): ChainMessage[] {
-  const proof = signAuthenticatorLinkEip191({ chainId: opts.chainId, account: opts.owner, privateKey: opts.agentPrivateKey });
   return linkAuthenticatorMsgs({
     owner: opts.owner,
     chainId: opts.chainId,
     scheme: "secp256k1",
-    pubkey: proof.pubkey,
-    possessionProof: proof.possessionProof,
+    pubkey: opts.proof.pubkey,
+    possessionProof: opts.proof.possessionProof,
     permissions: ["evm"],
     expiryUnix: opts.terms.expiryUnix,
     label: opts.terms.label ?? "Fenestella bill payer",
     spendingRule: leashRule(opts.terms),
   }) as ChainMessage[];
+}
+
+/** The agent's possession proof for linking to `owner` (needs the agent key; server or scripts only). */
+export function agentLinkProof(agentPrivateKey: Hex, owner: string, chainId: string) {
+  const p = signAuthenticatorLinkEip191({ chainId, account: owner, privateKey: agentPrivateKey });
+  return { pubkey: p.pubkey, possessionProof: p.possessionProof };
+}
+
+export function linkAgentMessages(opts: { owner: string; chainId: string; agentPrivateKey: Hex; terms: LeashTerms }): ChainMessage[] {
+  return linkAgentMessagesFromProof({
+    owner: opts.owner,
+    chainId: opts.chainId,
+    proof: agentLinkProof(opts.agentPrivateKey, opts.owner, opts.chainId),
+    terms: opts.terms,
+  });
 }
 
 /** Owner-signed: create the account's abstract-account record, needed once before linking keys. */

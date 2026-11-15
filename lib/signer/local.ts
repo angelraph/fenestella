@@ -5,6 +5,8 @@ import {
   signProofOfPossession,
   type UnifiedAccount,
 } from "@qorechain/sdk";
+import { sealKeysFromSeed } from "@qorechain/qoreseal";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { NETWORKS, type NetworkId } from "../networks";
 import { SignerError, type BroadcastResult, type ChainMessage, type Signer } from "./types";
 
@@ -93,6 +95,15 @@ export class LocalSigner implements Signer {
       throw new SignerError("chain", "Could not read the post-quantum key status.");
     }
     return r.body.found;
+  }
+
+  /**
+   * QoreSeal keys for this account, derived from its key, so the owner can
+   * reopen what it seals for an agent. Kept in memory like the key itself.
+   */
+  sealKeys() {
+    const seed = sha256(new TextEncoder().encode(`fenestella-owner-seal|${this.account.privateKey}`));
+    return sealKeysFromSeed(seed);
   }
 
   /**
