@@ -36,7 +36,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/">Console</Link>
                 <Link href="/#how">How it works</Link>
                 <Link href="/demo">For dApps</Link>
-                <a href={REPO}>GitHub</a>
+                <Link href="/docs">Docs</Link>
+                <Link href="/faq">FAQ</Link>
               </nav>
               <HeaderWallet />
             </div>
@@ -46,9 +47,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="inner">
               <span>Fenestella holds no keys. Your wallet signs; the chain enforces.</span>
               <nav aria-label="Footer">
-                <Link href="/demo">For dApps</Link>
+                <Link href="/docs">Docs</Link>
+                <Link href="/faq">FAQ</Link>
+                <Link href="/security">Security</Link>
                 <a href={REPO}>GitHub</a>
-                <a href="https://docs.qorechain.io/developer-guide/evm-window-reference">Window reference</a>
                 <span>MIT</span>
               </nav>
             </div>
