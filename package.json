@@ -40,6 +40,8 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "ffmpeg-static": "^5.3.0",
+    "playwright": "^1.65.1",
     "sharp": "^0.35.5",
     "solc": "^0.8.24",
     "tsx": "^4.23.15",

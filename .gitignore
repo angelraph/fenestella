@@ -13,3 +13,5 @@ contracts/lib
 
 .vercel
 .env*
+video/build/
+fenestella-demo.mp4
