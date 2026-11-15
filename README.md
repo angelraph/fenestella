@@ -137,6 +137,8 @@ Works, and verified:
 - The contracts: 20 Foundry tests pass. Both are deployed (see [deployments.testnet.json](deployments.testnet.json)):
   - `FenestellaReceipts`: `0xc520f7084758a3faafd2d8ffb7432c87787a1acc`
   - `Bills`: `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0`
+- From the live site with a real wallet (the QoreChain Dashboard testnet wallet, connected through the wallet picker): a plain-transfers window (5 transactions, 2 QOR, about 30 minutes) was opened on `qor1x2fqs3lpczt2yz2q2rvh0mjvft9rse30c5tv07`, read back from the chain, then closed with the console's button. Open: `26A809D636C386B6E4118501072583CEB8FBB41BF349B519BB42660EA606C245`. Close: `9DB6BDF83758857F3B6F0CEA848A316073D40568613BDE14BE4A5BE4869AE319`.
+- The wallet picker finds QoreX, Keplr, Leap, Cosmostation and EIP-6963 wallets (checked in Chrome with QoreX, Keplr, OKX Wallet, HOT Wallet and MetaMask installed).
 - The live `pqcKeyStatus` precompile answers in the shape `QorePQC.sol` expects (2,752 bytes for a registered account, 160 for an unregistered one).
 
 Testnet accounts this project uses:
@@ -146,7 +148,7 @@ Testnet accounts this project uses:
 
 Not verified yet:
 
-- **Signing through QoreX.** QoreX accepts dApp messages it can display and refuses the rest; its docs do not say whether a dApp may send `MsgOpenEVMWindow`. This is the next thing to test with a real wallet.
+- **Signing a window through QoreX on testnet.** The QoreX browser extension runs on mainnet and has no testnet switch; it reached the signing step and refused only because of the network, which Fenestella now explains. The testnet check has to be done in the QoreX phone app with Settings > Use testnet (developers).
 - **The popup flow of `requestWindow()`** in a real browser.
 - **`pqcVerify` on chain.** `FenestellaReceipts.attest` is tested against a mock; no receipt has been written on testnet yet.
 
