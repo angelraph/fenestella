@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fetchAuthNonce, resolveEvmAuthDigestVersion } from "@qorechain/sdk";
 import { recipientOf, sealKeysFromSeed } from "@qorechain/qoreseal";
-import { createPublicClient, createWalletClient, http, type Hex } from "viem";
+import { concat, createPublicClient, createWalletClient, http, keccak256, toBytes, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import deployments from "../../deployments.testnet.json";
 import { readAccount } from "../chain/read";
@@ -62,6 +62,16 @@ async function keys() {
   return cache;
 }
 
+/**
+ * One agent key per owner account. The chain binds a linked key to a single
+ * account, and a key per customer means revoking one owner never touches
+ * another. Each is derived from the agent's master secret, so there is still
+ * one secret to keep.
+ */
+export function agentKeyFor(master: Hex, owner: string): Hex {
+  return keccak256(concat([toBytes("fenestella-agent-key|"), toBytes(master), toBytes(owner)]));
+}
+
 /** The agent's seal keys, derived from its key so there is one secret to keep. */
 function agentSealKeys(agentKey: Hex) {
   const seed = createHash("sha256").update(`fenestella-agent-seal|${agentKey}`).digest();
@@ -89,10 +99,10 @@ const hex = (u: Uint8Array) => Buffer.from(u).toString("hex");
 export async function agentInfo(owner?: string): Promise<AgentInfo> {
   const k = await keys();
   const r = recipientOf(agentSealKeys(k.agentKey));
-  const proof = owner ? agentLinkProof(k.agentKey, owner, net.chainId) : null;
+  const proof = owner ? agentLinkProof(agentKeyFor(k.agentKey, owner), owner, net.chainId) : null;
   return {
     linkProof: proof ? { pubkey: hex(proof.pubkey), possessionProof: hex(proof.possessionProof) } : undefined,
-    agent: agentAddress(k.agentKey),
+    agent: agentAddress(owner ? agentKeyFor(k.agentKey, owner) : k.agentKey),
     relayer: k.relayer.address,
     vendor: k.vendor.address,
     vendorEvm: k.vendor.evmAddress.toLowerCase(),
@@ -159,7 +169,8 @@ export async function postTestBill(ownerEvm: string, amountUqor: bigint): Promis
 }
 
 async function relayAgentCall(owner: string, to: Hex, valueUqor: bigint, data: Hex | undefined, memo: string) {
-  const { agentKey, relayer } = await keys();
+  const { agentKey: master, relayer } = await keys();
+  const agentKey = agentKeyFor(master, owner);
   const agent = agentAddress(agentKey);
   const [digestVersion, nonce] = await Promise.all([
     resolveEvmAuthDigestVersion({ rest: net.rest }),

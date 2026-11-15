@@ -163,7 +163,7 @@ export class LocalSigner implements Signer {
       const txr = (r.body.tx_response ?? {}) as Json;
       const code = Number(txr.code ?? 0);
       if (code !== 0) {
-        throw new SignerError("chain", `The transaction failed on chain (${String(txr.codespace ?? "")} code ${code}): ${String(txr.raw_log ?? "")}`);
+        throw new SignerError("chain", `The transaction failed on chain (${txr.codespace ? `${String(txr.codespace)} ` : ""}code ${code}): ${String(txr.raw_log ?? "")}`);
       }
       return { txHash: hash, height: String(txr.height ?? "") };
     }
