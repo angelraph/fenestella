@@ -62,9 +62,12 @@ export function WindowForm({ truth, onChanged }: { truth: AccountTruth; onChange
 
   const signer = wallet.signer;
   const isOwner = !!signer && signer.address === truth.address.cosmos && signer.network === truth.network;
+  // QoreX registers the account's ML-DSA-87 key itself on the account's first transaction,
+  // so a QoreX user is not blocked here; any other signer is.
+  const qorexRegisters = !truth.pqc.registered && signer?.kind === "qorex";
   const blocked =
-    !truth.pqc.registered
-      ? "This account has no post-quantum key yet, so it cannot open a window. Register the key first: in QoreX the first send does it."
+    !truth.pqc.registered && !qorexRegisters
+      ? "This account has no post-quantum key yet, so it cannot open a window. Connect QoreX: it registers the key with the account's first transaction."
       : truth.keyType === "secp256k1"
         ? "This is a coin-118 account. The EVM lane does not accept its key, so a window would only cost its fee. Add an Ethereum account (coin 60) in QoreX."
         : null;
@@ -244,6 +247,12 @@ export function WindowForm({ truth, onChanged }: { truth: AccountTruth; onChange
             {live ? "Replace window" : "Open window"}
           </button>
           <span className="faint">Signed by {signer.label} with the hybrid ML-DSA-87 signature.</span>
+        </div>
+      )}
+      {qorexRegisters && isOwner && (
+        <div className="notice info">
+          This account has no post-quantum key yet. QoreX registers it in the same approval, before the window opens.
+          That registration is the step that stops anyone else from claiming the account.
         </div>
       )}
 

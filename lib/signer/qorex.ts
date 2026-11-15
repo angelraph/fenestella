@@ -61,7 +61,7 @@ export async function connectQorex(network: NetworkId): Promise<Signer> {
       const encoded = messages.map((m) => ({ typeUrl: m.typeUrl, value: toBase64(registry.encode(m)) }));
       let res;
       try {
-        res = await native.signAndBroadcast({ chainId, messages: encoded, memo });
+        res = await native.signAndBroadcast({ chainId, messages: encoded, memo, gasLimit: 600_000 });
       } catch (err) {
         throw classifyQorexError(err);
       }
