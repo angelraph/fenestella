@@ -43,8 +43,8 @@ export default function Home() {
         </p>
         <Lookup />
         <p className="faint">Reading an account needs no wallet and no gas. Works on testnet and mainnet.</p>
-        <a className="btn ghost small" href="https://youtu.be/4Lzn0d_LcqY" target="_blank" rel="noreferrer">
-          ▶ Watch the 2:39 demo
+        <a className="btn ghost small" href="https://x.com/RaphElevator/status/2122256610231763453" target="_blank" rel="noreferrer">
+          ▶ Watch the 2:55 demo
         </a>
       </section>
 

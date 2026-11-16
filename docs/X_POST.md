@@ -1,3 +1,5 @@
+Posted: https://x.com/RaphElevator/status/2122256610231763453
+
 If someone stole your wallet key tonight, what could they actually take?
 
 Most people can't answer that. I couldn't either. So I built the thing that answers it, then I went a step further and built an AI agent that can spend from my account without ever being able to rob it.
@@ -119,9 +121,10 @@ Next: a native QoreX screen for scoped windows, more agent jobs beyond bills (DC
 
 —
 
-🎥 2:39 demo: https://youtu.be/4Lzn0d_LcqY
+🎥 Demo: the video in this post (2:55)
 🌐 Try it (no wallet needed to watch the AI catch a scam): https://fenestella.vercel.app/agent
 💻 Code, MIT: https://github.com/angelraph/fenestella
+📦 For builders: npm install @fenestella/connect
 🏁 Project: https://build.qorechain.io/p/fenestella
 
 Built for Build Before Q-Day, the QoreChain Developer Fest, in the Post-Quantum AI Agents track.
