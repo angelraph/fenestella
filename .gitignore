@@ -15,3 +15,5 @@ contracts/lib
 .env*
 video/build/
 fenestella-demo.mp4
+test-results/
+playwright-report/
