@@ -94,6 +94,13 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 
 **The classical key alone** ([`scripts/attack.ts`](scripts/attack.ts)): a native transfer, an open-window message and an EVM transfer, each signed only with the classical key of a protected account, were all rejected before inclusion (`pqc code 20`, `no open EVM authorisation window`), and the balance did not change. Run `npm run attack` to see it again.
 
+**A post-quantum receipt, checked by the chain's `pqcVerify` precompile** ([`scripts/receipt.ts`](scripts/receipt.ts))
+
+| Step | Result | Receipt |
+| --- | --- | --- |
+| A forged attestation (signature over a different digest) | **Refused** by `FenestellaReceipts`: `InvalidSignature` | simulated before the write |
+| The dev account's ML-DSA-87 key signs the exact bytes `messageFor()` returns; anyone relays it | Recorded; `isAttested` is true | [0xfa030023…541f](https://fenestella.vercel.app/tx/0xfa030023c46c526dd07eab33be5cda41c3de3e9a5aaced2498dfe084cbd7541f) |
+
 **Contracts on testnet** (20 Foundry tests pass)
 
 | Contract | Address | Deployment |
@@ -134,6 +141,13 @@ It also says what people miss: the window's cap counts native QOR only, a token 
 - **Mandates are sealed and signed.** The owner writes the instruction in the browser. It is sealed with QoreSeal (ML-KEM-1024 + X25519, AES-256-GCM) to the agent and to the owner, with the bill's terms as the associated data. The owner then signs a 1 uqor self-send whose memo is `fenestella-mandate:<SHA3-256 of the envelope>`; QoreX shows memos, so no custom message or arbitrary signing is needed. Before paying, the agent checks that anchor (hybrid-signed, from the owner, same fingerprint), opens the envelope against the terms, and checks the bill on chain.
 - **Honest limits.** A key bound by a spending rule may still send small plain transfers within its caps. That is the chain's design; keep the caps small. The agent and relayer keys are testnet throwaways held by the server.
 
+### The agent's AI
+The agent's brain is Claude (`claude-opus-5-5`, Anthropic SDK, [`lib/agent/ai.ts`](lib/agent/ai.ts)). It does two jobs, and neither can widen the leash:
+- **It reads invoices.** Paste an invoice (or pick one of three samples: a genuine one, a phishing one, a prompt injection). The AI calls three tools that read the chain (`list_unpaid_bills`, `payee_history`, `agent_leash`), matches the invoice to a real bill, and returns a structured verdict: draft a mandate, hold, or refuse, with flags such as `changed_payment_details`, `urgency_pressure` or `instruction_injection`. Every tool call is shown on screen. Invoice text is treated as untrusted data.
+- **It gives a second opinion before every payment.** After the anchor and envelope check out, the AI reviews the mandate against the bill. A "no" stops the payment; if the AI is unavailable, the agent does not pay.
+
+The AI can say no; it can never make a yes bigger than the owner's on-chain rule. A fooled AI can still only pay an existing bill on `Bills`, to that bill's payee, within the cap. See [THREAT_MODEL.md](THREAT_MODEL.md), attacker A3.
+
 ### Windows and requests
 - Messages are built with `openEvmWindowMsg` / `closeEvmWindowMsg` from `@qorechain/sdk`. With QoreX the page only supplies messages; the wallet shows, hybrid-signs and broadcasts them.
 - `@fenestella/connect` ([`packages/connect`](packages/connect)) is dependency-free. `requestWindow()` opens an approval popup; the caller's origin comes from the browser, never from the message; the bounds are restated by Fenestella in plain words; and the result is the window as the chain stored it.
@@ -154,6 +168,7 @@ Requires Node.js 22 or newer.
 npm install
 npm run dev        # http://localhost:3000
 npm test           # 43 unit tests
+npx playwright test  # end-to-end, against the live testnet, no wallet needed
 cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 20 contract tests
 ```
 
@@ -167,20 +182,25 @@ npx tsx scripts/spike-mandate.ts   # sealed mandate end to end (needs npm run de
 npx tsx scripts/drill.ts status    # the Q-Day Drill account
 ```
 
-To run the agent on your own server, set `FENESTELLA_AGENT_KEY`, `FENESTELLA_RELAYER_MNEMONIC` and `FENESTELLA_VENDOR_MNEMONIC` (testnet only).
+To run the agent on your own server, set `FENESTELLA_AGENT_KEY`, `FENESTELLA_RELAYER_MNEMONIC` and `FENESTELLA_VENDOR_MNEMONIC` (testnet only), and `ANTHROPIC_API_KEY` for the agent's AI.
+
+```bash
+npx tsx scripts/receipt.ts         # a pqcVerify-checked receipt, and a forged one refused
+```
 
 ## Repository map
 
 ```
 app/                 Next.js pages: console, /account/[address], /agent, /tx/[hash] receipts, /request, /demo, /docs, /faq, /security
-app/api/             account reads, and the agent: /api/agent, /bill, /run, /rogue
+app/api/             account reads, and the agent: /api/agent, /bill, /run, /rogue, /analyze (the AI)
 lib/exposure.ts      chain state -> what a leaked classical key can do
-lib/agent/           leash (rule, link, execute), mandate (seal, anchor, verify), server (the agent service)
+lib/agent/           leash (rule, link, execute), mandate (seal, anchor, verify), ai (Claude), server (the agent service)
 lib/signer/          QoreX signer, local / Dashboard signer (testnet only)
 lib/wallets/         wallet detection
 packages/connect/    @fenestella/connect: requestWindow()
 contracts/           Foundry: QorePQC, FenestellaReceipts, Bills, tests
-scripts/             spikes, attack, deploy, drill, accounts
+scripts/             spikes, attack, deploy, drill, receipt, accounts
+tests/               unit tests (vitest) and end-to-end tests (Playwright)
 video/               how the demo video was made: script, voice, recorder, editor
 ```
 
@@ -190,9 +210,10 @@ video/               how the demo video was made: script, voice, recorder, edito
 - [`@qorechain/qorex-types`](https://www.npmjs.com/package/@qorechain/qorex-types): QoreX detection and `signAndBroadcast`.
 - [`@qorechain/qoreseal`](https://www.npmjs.com/package/@qorechain/qoreseal): sealing and opening mandates.
 - [`@qorechain/wallet-adapter`](https://www.npmjs.com/package/@qorechain/wallet-adapter): the chain descriptor for Keplr-family wallets.
+- [Claude](https://www.anthropic.com/claude) through [`@anthropic-ai/sdk`](https://www.npmjs.com/package/@anthropic-ai/sdk): the agent's AI (tool runner, structured outputs).
 - Next.js, React, viem, vitest, Foundry, Playwright and ffmpeg (video), Microsoft Edge neural voice "Andrew" (narration).
 
-How AI was used to build this is logged in [AI_USAGE.md](AI_USAGE.md).
+How AI was used to build this is logged in [AI_USAGE.md](AI_USAGE.md). What Fenestella defends against, and what it does not, is in [THREAT_MODEL.md](THREAT_MODEL.md).
 
 ## Licence
 

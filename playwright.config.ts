@@ -1,9 +1,9 @@
 import { defineConfig } from "@playwright/test";
 
 /**
- * End-to-end tests against a local dev server, on the real testnet, with the
- * QoreX wallet mock injected into every page (tests/e2e/mock.ts).
- *   npx tsx scripts/e2e-fund.ts && npx playwright test
+ * End-to-end tests against a local dev server, reading the real testnet.
+ * No wallet and no mocks: these tests only read.
+ *   npx playwright test
  */
 export default defineConfig({
   testDir: "tests/e2e",
