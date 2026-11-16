@@ -300,4 +300,6 @@ dialog.picker::backdrop { background: rgba(3, 4, 4, 0.72); backdrop-filter: blur
 .pill.risk-medium { color: var(--scoped); border-color: rgba(240, 195, 86, 0.5); }
 .pill.risk-high { color: var(--breach); border-color: rgba(255, 97, 97, 0.5); }
 .ai-facts { grid-template-columns: repeat(3, 1fr); }
+.ai-guard { border-color: rgba(240, 195, 86, 0.45); background: rgba(240, 195, 86, 0.06); }
+.ai-guard .list { margin: 6px 0 0; }
 .ai-calls { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--dim); font-size: 0.9rem; }

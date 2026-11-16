@@ -42,6 +42,8 @@ interface Review {
 
 interface AiResult {
   review: Review;
+  /** Corrections Fenestella's own rules made to the AI's answer. */
+  guard?: string[];
   calls: { tool: string; summary: string }[];
   model: string;
 }
@@ -454,6 +456,16 @@ export function AgentConsole() {
                   </li>
                 ))}
               </ul>
+            )}
+            {aiResult.guard && aiResult.guard.length > 0 && (
+              <div className="notice ai-guard">
+                <strong>Fenestella's rules, applied after the AI:</strong>
+                <ul className="list">
+                  {aiResult.guard.map((g, i) => (
+                    <li key={i}>{g}</li>
+                  ))}
+                </ul>
+              </div>
             )}
             <div className="facts ai-facts">
               <div className="fact"><div className="k">Vendor</div><div className="v">{aiResult.review.extracted.vendor || "?"}</div></div>
