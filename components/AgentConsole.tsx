@@ -9,7 +9,7 @@ import { AiReview, type Review } from "./AiReview";
 import { ConnectPanel, useWallet } from "./Wallet";
 
 /** The account the demo video was recorded on; the AI can read for it without a wallet. */
-const DEMO_OWNER = "qor10dspk3lpz8a9wecpzzjd3vftw5hm9959vk70er";
+const DEMO_OWNER = "qor1072yq0ksuukxkym8d9r0mpr3upz4awf00u5ew7";
 
 interface Bill {
   id: string;
@@ -30,6 +30,17 @@ interface Info {
   linkProof?: { pubkey: string; possessionProof: string };
   ownerBills: Bill[];
   ai?: { ready: boolean; model: string };
+  vault: string;
+  paySelector: string;
+  vaultState?: {
+    balanceUqor: string;
+    perPaymentUqor: string;
+    perDayUqor: string;
+    spentTodayUqor: string;
+    paused: boolean;
+    nonce: string;
+    vendorApproved: boolean;
+  };
   error?: string;
 }
 
@@ -60,7 +71,11 @@ function Steps({ steps }: { steps: Step[] }) {
   );
 }
 
-type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai";
+type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai" | "move" | "fund" | "rules";
+
+/** The Dashboard / local signer exposes its keys to this tab; QoreX never does. */
+type KeyedSigner = Signer & { evmAddress: string; account: { privateKey: string; pqc: { secretKey: Uint8Array } } };
+const keyed = (s: Signer | null): KeyedSigner | null => (s && "account" in s && "evmAddress" in s ? (s as KeyedSigner) : null);
 
 export function AgentConsole() {
   const wallet = useWallet();
@@ -82,6 +97,8 @@ export function AgentConsole() {
   const [mandateSteps, setMandateSteps] = useState<Step[] | null>(null);
   const [rogueSteps, setRogueSteps] = useState<Step[] | null>(null);
   const [linkTx, setLinkTx] = useState<string | null>(null);
+  const [depositQor, setDepositQor] = useState("1.5");
+  const [vaultSteps, setVaultSteps] = useState<Step[] | null>(null);
 
   const load = useCallback(async () => {
     if (!signer) return;
@@ -106,8 +123,12 @@ export function AgentConsole() {
   }, [info, account]);
   const linked = !!agentKey && !agentKey.revoked && BigInt(agentKey.expiryUnix) > BigInt(Math.floor(Date.now() / 1000));
   const rule = account?.truth.abstractAccount.rules.find((r) => r.enabled) ?? null;
+  const onVault = !!info && !!rule && rule.allowedEvmCalls.some((c) => c.toLowerCase() === `${info.vault}/${info.paySelector}`.toLowerCase());
+  const vs = info?.vaultState;
+  const vaultReady = !!vs && BigInt(vs.balanceUqor) > 0n && BigInt(vs.perPaymentUqor) > 0n && vs.vendorApproved;
   const unpaid = info?.ownerBills.filter((b) => !b.paid) ?? [];
-  const selected = unpaid.find((b) => b.id === billId) ?? unpaid[0] ?? null;
+  const approvedPayee = (b: Bill) => !!info && b.payee === info.vendorEvm && !!info.vaultState?.vendorApproved;
+  const selected = unpaid.find((b) => b.id === billId) ?? unpaid.find(approvedPayee) ?? unpaid[0] ?? null;
 
   useEffect(() => {
     if (selected) {
@@ -139,9 +160,10 @@ export function AgentConsole() {
           chainId: net.chainId,
           proof: { pubkey: fromHex(info.linkProof.pubkey), possessionProof: fromHex(info.linkProof.possessionProof) },
           terms: {
-            bills: info.bills,
-            perTxUqor: qorToUqor(perTx),
-            dailyUqor: qorToUqor(daily),
+            bills: info.vault,
+            selector: info.paySelector,
+            perTxUqor: 1n,
+            dailyUqor: 1n,
             expiryUnix: Math.floor(Date.now() / 1000) + days * 86400,
           },
         }),
@@ -149,6 +171,74 @@ export function AgentConsole() {
       const r = await signer.signAndBroadcast(msgs, "fenestella: put the bill payer on a leash");
       setLinkTx(r.txHash);
       await new Promise((res) => setTimeout(res, 2500));
+      await load();
+    });
+
+  const moveLeash = () =>
+    guard("move", async () => {
+      if (!signer || !info) return;
+      const { vaultLeashMessage } = await import("@/lib/agent/leash");
+      const r = await signer.signAndBroadcast([vaultLeashMessage(signer.address, info.vault, info.paySelector)], "fenestella: leash on the vault");
+      setLinkTx(r.txHash);
+      await new Promise((res) => setTimeout(res, 2500));
+      await load();
+    });
+
+  const fundVault = () =>
+    guard("fund", async () => {
+      const k = keyed(signer);
+      if (!k || !info) throw new Error("Funding the vault signs an EVM transaction in this tab, so it needs the QoreChain Dashboard wallet (testnet).");
+      const amountUqor = qorToUqor(depositQor);
+      if (amountUqor <= 0n || amountUqor > 5_000_000n) throw new Error("Put between 0.000001 and 5 QOR in the vault.");
+      const steps: Step[] = [];
+      setVaultSteps(steps);
+      const { openWindowMessage } = await import("@/lib/messages");
+      const w = await k.signAndBroadcast(
+        [openWindowMessage(k.address, { blocks: 120, maxTxs: 1, maxValueUqor: (amountUqor + 300_000n).toString(), allowedTargets: [info.vault] })],
+        "fenestella: one-call window to fund your vault",
+      );
+      steps.push({ ok: true, text: "Opened a one-transaction window that reaches only your vault, signed with your post-quantum key.", tx: w.txHash });
+      setVaultSteps([...steps]);
+      const p = (await (await fetch(`/api/vault?evm=${k.evmAddress}`, { cache: "no-store" })).json()) as { nonce: number; gasPrice: string; chainId: number; error?: string };
+      if (p.error) throw new Error(p.error);
+      const [{ privateKeyToAccount }, { encodeFunctionData }, { VAULT_ABI }] = await Promise.all([import("viem/accounts"), import("viem"), import("@/lib/agent/vault")]);
+      const raw = await privateKeyToAccount(k.account.privateKey as `0x${string}`).signTransaction({
+        chainId: p.chainId,
+        type: "legacy",
+        nonce: p.nonce,
+        gasPrice: BigInt(p.gasPrice),
+        gas: 120_000n,
+        to: info.vault as `0x${string}`,
+        value: amountUqor * 1_000_000_000_000n,
+        data: encodeFunctionData({ abi: VAULT_ABI, functionName: "deposit", args: [k.evmAddress as `0x${string}`] }),
+      });
+      const res = await fetch("/api/vault", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "deposit", raw }) });
+      const body = (await res.json()) as { tx?: string; error?: string };
+      if (!res.ok) throw new Error(body.error ?? "The deposit failed.");
+      steps.push({ ok: true, text: `Put ${depositQor} QOR in your vault. The window was used up by this one transaction.`, tx: body.tx });
+      setVaultSteps([...steps]);
+      await load();
+    });
+
+  const signRules = () =>
+    guard("rules", async () => {
+      const k = keyed(signer);
+      if (!k || !info?.vaultState) throw new Error("Signing vault rules uses your ML-DSA-87 key in this tab, so it needs the QoreChain Dashboard wallet (testnet).");
+      const [{ pqcSign }, vault, { bytesToHex, hexToBytes }] = await Promise.all([import("@qorechain/sdk"), import("@/lib/agent/vault"), import("viem")]);
+      const QOR = 1_000_000_000_000n;
+      const admins: import("@/lib/agent/vault").VaultAdmin[] = [];
+      if (!info.vaultState.vendorApproved) admins.push({ action: "payee", payee: info.vendorEvm as `0x${string}`, approved: true });
+      admins.push({ action: "limits", token: vault.NATIVE, perPayment: qorToUqor(perTx) * QOR, perDay: qorToUqor(daily) * QOR });
+      const nonce = BigInt(info.vaultState.nonce);
+      const items = admins.map((admin, i) => ({
+        admin: JSON.parse(JSON.stringify(admin, (_k, v) => (typeof v === "bigint" ? v.toString() : v))),
+        signature: bytesToHex(pqcSign(k.account.pqc.secretKey, hexToBytes(vault.adminMessage({ chainId: net.evmChainId, owner: k.evmAddress.toLowerCase() as `0x${string}`, nonce: nonce + BigInt(i), admin })))),
+      }));
+      setVaultSteps([{ ok: true, text: `Signed ${items.length === 1 ? "the limits" : "the payee and the limits"} in this tab with your ML-DSA-87 key (4,627-byte signatures). The relayer sends them; the vault checks each with pqcVerify.` }]);
+      const res = await fetch("/api/vault", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "admin", ownerEvm: k.evmAddress, items }) });
+      const body = (await res.json()) as { steps?: Step[]; error?: string };
+      if (!res.ok) throw new Error(body.error ?? "The vault did not accept the rules.");
+      setVaultSteps((s) => [...(s ?? []), ...(body.steps ?? [])]);
       await load();
     });
 
@@ -273,8 +363,8 @@ export function AgentConsole() {
         </div>
         <p>
           The agent gets its own key, linked to your account with one permission: EVM calls. A spending rule says what
-          that key may do. The chain checks every payment against it, so the agent never holds your keys and never
-          needs an open window.
+          that key may do: call <strong>one function of your vault</strong>, and move at most 0.000001 QOR of your own
+          balance. The chain checks every call against it, so a stolen agent key cannot send your money anywhere.
         </p>
         {!info ? (
           <p className="muted" role="status">
@@ -283,13 +373,23 @@ export function AgentConsole() {
           </p>
         ) : linked && rule ? (
           <>
-            <div className="summary">
-              Agent <span className="mono">{shortAddress(info.agent)}</span> may call only{" "}
-              <strong>Bills.pay</strong> on <span className="mono">{shortAddress(info.bills)}</span>, at most{" "}
-              <strong>{uqorToQor(rule.perTxLimit)} QOR</strong> a payment and{" "}
-              <strong>{uqorToQor(rule.dailyLimit)} QOR</strong> a day, until{" "}
-              <strong>{unixToDate(agentKey!.expiryUnix)}</strong>.
-            </div>
+            {onVault ? (
+              <div className="summary">
+                Agent <span className="mono">{shortAddress(info.agent)}</span> may call only{" "}
+                <strong>AgentVault.payBill</strong>, and move at most <strong>{rule.perTxLimit} uqor</strong> of your own
+                balance a day, until <strong>{unixToDate(agentKey!.expiryUnix)}</strong>. Everything it pays comes from your vault.
+              </div>
+            ) : (
+              <div className="notice info">
+                The agent is linked with the older leash: it may move up to <strong>{uqorToQor(rule.perTxLimit)} QOR</strong> a
+                payment from your own balance, to anyone. Move it onto your vault so it can pay only bills, only to payees you approve.
+                <div style={{ marginTop: 10 }}>
+                  <button className="btn accent small" disabled={!!busy} onClick={moveLeash}>
+                    {busy === "move" ? "Signing…" : "Move the leash onto my vault"}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="row">
               <button className="btn danger small" disabled={!!busy} onClick={revoke}>
                 {busy === "revoke" ? "Revoking…" : "Revoke the agent now"}
@@ -305,22 +405,14 @@ export function AgentConsole() {
           <>
             <div className="fields">
               <div className="field">
-                <label htmlFor="a-pertx">Most per payment (QOR)</label>
-                <input id="a-pertx" className="input" inputMode="decimal" value={perTx} onChange={(e) => setPerTx(e.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="a-daily">Most per day (QOR)</label>
-                <input id="a-daily" className="input" inputMode="decimal" value={daily} onChange={(e) => setDaily(e.target.value)} />
-              </div>
-              <div className="field">
                 <label htmlFor="a-days">Link expires after (days)</label>
                 <input id="a-days" className="input" type="number" min={1} max={90} value={days} onChange={(e) => setDays(Number(e.target.value))} />
               </div>
             </div>
             <div className="summary">
-              The agent will be able to call <strong>only Bills.pay</strong>, at most <strong>{perTx} QOR</strong> a
-              payment and <strong>{daily} QOR</strong> a day, for <strong>{days} days</strong>. Linking replaces your
-              account&apos;s spending rules with this one.
+              The agent will be able to call <strong>only AgentVault.payBill</strong>, and move at most{" "}
+              <strong>0.000001 QOR</strong> of your own balance, for <strong>{days} days</strong>. Linking replaces your
+              account&apos;s spending rules with this one. You set what it may pay in the next step.
             </div>
             <div>
               <button className="btn accent" disabled={!!busy} onClick={link}>
@@ -331,13 +423,65 @@ export function AgentConsole() {
         )}
       </section>
 
+      <section className="card stack agent-step" data-done={vaultReady}>
+        <div className="row between">
+          <h2>
+            <span className="num">2</span> Fund your vault and set its rules
+          </h2>
+          {vs?.paused && <span className="pill">Paused</span>}
+        </div>
+        <p>
+          The agent pays only from your vault, a contract with no admin. You decide who it may pay and how much, and you
+          sign those rules with your <strong>post-quantum key</strong>: the vault checks every signature with the
+          chain&apos;s pqcVerify. A stolen classical key or agent key cannot change them.
+        </p>
+        {vs && (
+          <div className="facts ai-facts">
+            <div className="fact"><div className="k">In the vault</div><div className="v">{uqorToQor(vs.balanceUqor)} QOR</div></div>
+            <div className="fact"><div className="k">Limits</div><div className="v">{BigInt(vs.perPaymentUqor) > 0n ? `${uqorToQor(vs.perPaymentUqor)} a payment, ${uqorToQor(vs.perDayUqor)} a day` : "None yet: nothing can be paid"}</div></div>
+            <div className="fact"><div className="k">Approved payee</div><div className="v">{vs.vendorApproved ? "Northwind Hosting (test vendor)" : "None yet"}</div></div>
+          </div>
+        )}
+        {!keyed(signer) ? (
+          <p className="faint">
+            Funding the vault and signing its rules happen in this tab, so they need the QoreChain Dashboard wallet on
+            testnet. QoreX does not sign raw EVM transactions or arbitrary bytes.
+          </p>
+        ) : (
+          <>
+            <div className="fields">
+              <div className="field">
+                <label htmlFor="v-dep">Put in the vault (QOR)</label>
+                <input id="v-dep" className="input" inputMode="decimal" value={depositQor} onChange={(e) => setDepositQor(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="a-pertx">Most per payment (QOR)</label>
+                <input id="a-pertx" className="input" inputMode="decimal" value={perTx} onChange={(e) => setPerTx(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="a-daily">Most per day (QOR)</label>
+                <input id="a-daily" className="input" inputMode="decimal" value={daily} onChange={(e) => setDaily(e.target.value)} />
+              </div>
+            </div>
+            <div className="row">
+              <button className="btn ghost" disabled={!!busy || !info} onClick={fundVault}>
+                {busy === "fund" ? "Funding…" : `Put ${depositQor} QOR in my vault`}
+              </button>
+              <button className="btn accent" disabled={!!busy || !info} onClick={signRules}>
+                {busy === "rules" ? "Signing…" : vs?.vendorApproved ? "Sign new limits" : "Approve the vendor and sign the limits"}
+              </button>
+            </div>
+          </>
+        )}
+        {vaultSteps && <Steps steps={vaultSteps} />}
+      </section>
+
       <section className="card stack agent-step" data-done={unpaid.length > 0}>
         <h2>
-          <span className="num">2</span> A bill to pay
+          <span className="num">3</span> A bill to pay
         </h2>
         <p>
-          A test vendor posts bills on the Bills contract. Paying one sends the exact amount to the vendor; the
-          contract keeps nothing.
+          A test vendor posts a bill to your vault. Anyone can send you a bill; only payees you approved can be paid.
         </p>
         {info && info.ownerBills.length > 0 && (
           <ul className="bill-list">
@@ -346,6 +490,7 @@ export function AgentConsole() {
                 <span className="mono">#{b.id}</span>
                 <span>{uqorToQor(b.amountUqor)} QOR</span>
                 <span className="mono faint">to {shortAddress(b.payee)}</span>
+                {!approvedPayee(b) && <span className="pill risk-high">Payee not approved</span>}
                 <span className={`pill ${b.paid ? "" : "active"}`}>{b.paid ? "Paid" : "Unpaid"}</span>
               </li>
             ))}
@@ -361,14 +506,14 @@ export function AgentConsole() {
       <section className="card stack agent-step" data-done={draftUsed}>
         <div className="row between">
           <h2>
-            <span className="num">3</span> Let the agent&apos;s AI read the invoice
+            <span className="num">4</span> Let the agent&apos;s AI read the invoice
           </h2>
           {info?.ai && <span className={`pill ${info.ai.ready ? "active" : ""}`}>{info.ai.ready ? info.ai.model : "AI offline"}</span>}
         </div>
         <p>
           Paste the invoice you received, an email or a message. The agent&apos;s AI checks it against the chain with its
           own tools (your unpaid bills, who you have paid before, its own leash) and decides: pay, hold, or refuse.
-          It can be fooled like anyone; the chain cannot. Whatever it decides, it can never pay more than your rule allows.
+          It can be fooled like anyone; the chain and your vault cannot. Whatever it decides, it can never pay more than your limits, or anyone you did not approve.
         </p>
         {account && (
           <AiReview
@@ -383,7 +528,7 @@ export function AgentConsole() {
 
       <section id="mandate-step" className="card stack agent-step" data-done={mandateSteps?.some((s) => /^Paid/.test(s.text)) ?? false}>
         <h2>
-          <span className="num">4</span> Give the agent a sealed mandate
+          <span className="num">5</span> Give the agent a sealed mandate
         </h2>
         <p>
           You tell the agent what to pay in a mandate. It is encrypted to the agent with ML-KEM-1024, and you sign its
@@ -391,6 +536,8 @@ export function AgentConsole() {
         </p>
         {!linked ? (
           <p className="faint">Link the agent first.</p>
+        ) : !onVault ? (
+          <p className="faint">Move the agent&apos;s leash onto your vault first (step 1).</p>
         ) : !selected ? (
           <p className="faint">Ask the vendor for a bill first.</p>
         ) : (
@@ -436,11 +583,12 @@ export function AgentConsole() {
 
       <section className="card stack agent-step">
         <h2>
-          <span className="num">5</span> Now try to break it
+          <span className="num">6</span> Now try to break it
         </h2>
         <p>
-          Suppose the agent&apos;s key is stolen. The thief skips the mandate and signs a payment of almost your whole
-          balance to their own address. Only the chain stands in the way.
+          Suppose the agent&apos;s key is stolen. The thief skips the mandate and tries three things: send most of your
+          balance to their own address, approve themselves as a payee in your vault, and get the agent key to pay a bill
+          they sent you. Only the chain and your vault stand in the way.
         </p>
         <div>
           <button className="btn danger" disabled={!!busy || !linked} onClick={rogue}>
@@ -482,7 +630,7 @@ function DemoAi() {
       </div>
       <p>
         The AI reads invoices for <a href={`/account/${DEMO_OWNER}?network=testnet`}>the demo account</a>, which has the
-        agent linked and a real unpaid bill on chain. Pick the phishing or the prompt-injection sample and watch it check
+        agent linked, a funded vault and a real unpaid bill on chain. Pick the phishing or the prompt-injection sample and watch it check
         the chain with its tools and refuse. This only reads; nothing is signed or paid.
       </p>
       {evm ? <AiReview owner={DEMO_OWNER} ownerEvm={evm} ai={ai} /> : <p className="faint">Reading the demo account…</p>}

@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fetchAuthNonce, resolveEvmAuthDigestVersion } from "@qorechain/sdk";
 import { recipientOf, sealKeysFromSeed } from "@qorechain/qoreseal";
-import { concat, createPublicClient, createWalletClient, http, keccak256, parseAbiItem, toBytes, type Hex } from "viem";
+import { BaseError, ContractFunctionRevertedError, concat, createPublicClient, createWalletClient, decodeFunctionData, http, keccak256, parseAbiItem, parseTransaction, toBytes, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import deployments from "../../deployments.testnet.json";
 import { readAccount } from "../chain/read";
@@ -11,7 +11,8 @@ import { executionFailures, fetchTx, waitForTx } from "../chain/tx";
 import { closeWindowMessage, openWindowMessage } from "../messages";
 import { NETWORKS } from "../networks";
 import { LocalSigner } from "../signer/local";
-import { agentAddress, agentExecuteEvm, agentLinkProof, AQOR_PER_UQOR, BILLS_ABI, payCalldata } from "./leash";
+import { agentAddress, agentExecuteEvm, agentLinkProof, AQOR_PER_UQOR } from "./leash";
+import { adminCalldata, NATIVE, PAY_BILL_SELECTOR, payBillCalldata, VAULT, VAULT_ABI, VAULT_FROM_BLOCK, type VaultAdmin, type VaultView } from "./vault";
 import { MandateError, openMandate, verifyAnchor, type MandateTerms } from "./mandate";
 import { aiModel, aiReady, reviewInvoice, secondOpinion } from "./ai";
 import { uqorToQor } from "../format";
@@ -91,6 +92,11 @@ export interface AgentInfo {
   sealRecipient: { mlkemPublicKey: string; x25519PublicKey: string };
   suggestedTerms: { perTxUqor: string; dailyUqor: string; days: number };
   ai: { ready: boolean; model: string };
+  /** The AgentVault, and the one function of it the agent may call. */
+  vault: string;
+  paySelector: string;
+  /** For `ownerEvm`: the owner's vault. */
+  vaultState?: VaultView;
   /** For `owner`: the agent's proof that it holds its key, to put in the owner's link transaction. Hex. */
   linkProof?: { pubkey: string; possessionProof: string };
 }
@@ -99,7 +105,7 @@ const b64 = (u: Uint8Array) => Buffer.from(u).toString("base64");
 
 const hex = (u: Uint8Array) => Buffer.from(u).toString("hex");
 
-export async function agentInfo(owner?: string): Promise<AgentInfo> {
+export async function agentInfo(owner?: string, ownerEvm?: string): Promise<AgentInfo> {
   const k = await keys();
   const r = recipientOf(agentSealKeys(k.agentKey));
   const proof = owner ? agentLinkProof(agentKeyFor(k.agentKey, owner), owner, net.chainId) : null;
@@ -109,10 +115,15 @@ export async function agentInfo(owner?: string): Promise<AgentInfo> {
     relayer: k.relayer.address,
     vendor: k.vendor.address,
     vendorEvm: k.vendor.evmAddress.toLowerCase(),
-    bills: BILLS.toLowerCase(),
+    bills: VAULT,
+    vault: VAULT,
+    paySelector: PAY_BILL_SELECTOR,
+    vaultState: ownerEvm ? await vaultState(ownerEvm, k.vendor.evmAddress) : undefined,
     chainId: net.chainId,
     sealRecipient: { mlkemPublicKey: b64(r.mlkemPublicKey), x25519PublicKey: b64(r.x25519PublicKey!) },
-    suggestedTerms: { perTxUqor: "1000000", dailyUqor: "3000000", days: 14 },
+    // The chain rule on the owner's account: almost nothing may leave it,
+    // because the vault pays. The real limits live in the vault.
+    suggestedTerms: { perTxUqor: "1", dailyUqor: "1", days: 14 },
     ai: { ready: aiReady(), model: aiModel() },
   };
 }
@@ -131,18 +142,18 @@ export interface BillView {
   paid: boolean;
 }
 
-const BILLS_FROM_BLOCK = BigInt(deployments.contracts.Bills.block);
+const BILLS_FROM_BLOCK = VAULT_FROM_BLOCK;
 /** The testnet RPC answers eth_getLogs for at most 10,000 blocks at a time. */
 const LOG_SPAN = 10_000n;
 const BILL_CREATED = parseAbiItem(
-  "event BillCreated(uint256 indexed id, address indexed payee, address indexed payer, uint256 amount, bytes32 memoHash)",
+  "event BillCreated(uint256 indexed id, address indexed owner, address indexed payee, address token, uint256 amount, bytes32 memoHash)",
 );
 /** Per payer: the bill ids already found, and the last block scanned. */
 const billIndex = new Map<string, { scannedTo: bigint; ids: Set<bigint> }>();
 
 /**
- * Every bill addressed to `ownerEvm`, newest first, found through the
- * `BillCreated` events filtered by the indexed payer. Anyone may post a bill
+ * Every bill addressed to `ownerEvm` in the AgentVault, newest first, found
+ * through the `BillCreated` events filtered by the indexed owner. Anyone may post a bill
  * to anyone, so the list cannot rely on the newest N bills of the contract: a
  * flood of bills to other people would push the owner's out of view.
  */
@@ -157,7 +168,7 @@ export async function billsFor(ownerEvm: string): Promise<BillView[]> {
   for (let i = 0; i < spans.length; i += 8) {
     const batch = await Promise.all(
       spans.slice(i, i + 8).map(([fromBlock, toBlock]) =>
-        publicClient.getLogs({ address: BILLS, event: BILL_CREATED, args: { payer }, fromBlock, toBlock }),
+        publicClient.getLogs({ address: VAULT, event: BILL_CREATED, args: { owner: payer }, fromBlock, toBlock }),
       ),
     );
     for (const logs of batch) for (const l of logs) if (l.args.id !== undefined) known.ids.add(l.args.id);
@@ -167,12 +178,12 @@ export async function billsFor(ownerEvm: string): Promise<BillView[]> {
 
   const ids = [...known.ids].sort((a, b) => (a < b ? 1 : -1));
   const bills = await Promise.all(
-    ids.map((id) => publicClient.readContract({ address: BILLS, abi: BILLS_ABI, functionName: "billOf", args: [id] })),
+    ids.map((id) => publicClient.readContract({ address: VAULT, abi: VAULT_ABI, functionName: "billOf", args: [id] })),
   );
   return bills.map((b, i) => ({
     id: ids[i].toString(),
     payee: b.payee.toLowerCase(),
-    payer: b.payer.toLowerCase(),
+    payer: b.owner.toLowerCase(),
     amountUqor: (b.amount / AQOR_PER_UQOR).toString(),
     paid: b.paid,
   }));
@@ -182,27 +193,173 @@ export async function billsFor(ownerEvm: string): Promise<BillView[]> {
 export async function postTestBill(ownerEvm: string, amountUqor: bigint): Promise<{ billId: string; tx: string }> {
   if (amountUqor <= 0n || amountUqor > 2_000_000n) throw new MandateError("A test bill is between 0.000001 and 2 QOR.");
   const { vendor } = await keys();
-  const before = await publicClient.readContract({ address: BILLS, abi: BILLS_ABI, functionName: "count" });
-  await vendor.signAndBroadcast(
-    [openWindowMessage(vendor.address, { blocks: 120, maxTxs: 1, maxValueUqor: "500000", allowedTargets: [BILLS] })],
-    "fenestella vendor: one-call window",
-  );
-  try {
-    const wallet = createWalletClient({ account: privateKeyToAccount(vendor.account.privateKey as Hex), chain, transport: http(net.evmRpc) });
-    const memo = `0x${createHash("sha256").update(`test bill for ${ownerEvm} at ${Date.now()}`).digest("hex")}` as Hex;
+  return postBillAs(vendor, ownerEvm, amountUqor, "fenestella vendor");
+}
+
+/** `who` posts a bill to `ownerEvm` in the vault, through a one-call window scoped to the vault. */
+async function postBillAs(who: LocalSigner, ownerEvm: string, amountUqor: bigint, label: string): Promise<{ billId: string; tx: string }> {
+  return inVaultWindow(who, 1, label, async (wallet) => {
+    const memo = `0x${createHash("sha256").update(`bill for ${ownerEvm} at ${Date.now()}`).digest("hex")}` as Hex;
     const hash = await wallet.writeContract({
-      address: BILLS,
-      abi: BILLS_ABI,
+      address: VAULT,
+      abi: VAULT_ABI,
       functionName: "createBill",
-      args: [ownerEvm as Hex, amountUqor * AQOR_PER_UQOR, memo],
+      args: [ownerEvm as Hex, NATIVE, amountUqor * AQOR_PER_UQOR, memo],
     });
     const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 90_000 });
     if (receipt.status !== "success") throw new Error("The bill could not be posted.");
-    return { billId: before.toString(), tx: hash };
+    const log = receipt.logs.find((l) => l.address.toLowerCase() === VAULT && l.topics.length === 4);
+    if (!log?.topics[1]) throw new Error("The bill was posted but its number could not be read.");
+    return { billId: BigInt(log.topics[1]).toString(), tx: hash };
+  });
+}
+
+/** Run EVM calls from `who` to the vault inside a short window scoped to the vault, then close it. */
+async function inVaultWindow<T>(who: LocalSigner, maxTxs: number, label: string, fn: (wallet: ReturnType<typeof walletOf>) => Promise<T>): Promise<T> {
+  await who.signAndBroadcast(
+    [openWindowMessage(who.address, { blocks: 120, maxTxs, maxValueUqor: String(500_000 * maxTxs), allowedTargets: [VAULT] })],
+    `${label}: window scoped to the vault`,
+  );
+  try {
+    return await fn(walletOf(who));
   } finally {
-    const w = (await readAccount("testnet", vendor.address)).window;
-    if (w?.live) await vendor.signAndBroadcast([closeWindowMessage(vendor.address)], "fenestella vendor: close window");
+    const w = (await readAccount("testnet", who.address)).window;
+    if (w?.live) await who.signAndBroadcast([closeWindowMessage(who.address)], `${label}: close window`);
   }
+}
+
+function walletOf(who: LocalSigner) {
+  return createWalletClient({ account: privateKeyToAccount(who.account.privateKey as Hex), chain, transport: http(net.evmRpc) });
+}
+
+/** The owner's vault as the agent page shows it. */
+export async function vaultState(ownerEvm: string, vendorEvm: string): Promise<VaultView> {
+  const o = ownerEvm as Hex;
+  const day = BigInt(Math.floor(Date.now() / 1000 / 86400));
+  const read = <T,>(functionName: string, args: unknown[]) =>
+    publicClient.readContract({ address: VAULT, abi: VAULT_ABI, functionName: functionName as never, args: args as never }) as Promise<T>;
+  const [bal, limits, spent, paused, nonce, approved] = await Promise.all([
+    read<bigint>("balanceOf", [o, NATIVE]),
+    read<readonly [bigint, bigint]>("limitsOf", [o, NATIVE]),
+    read<bigint>("spentOn", [o, NATIVE, day]),
+    read<boolean>("paused", [o]),
+    read<bigint>("nonces", [o]),
+    read<boolean>("payeeApproved", [o, vendorEvm as Hex]),
+  ]);
+  return {
+    address: VAULT,
+    balanceUqor: (bal / AQOR_PER_UQOR).toString(),
+    perPaymentUqor: (limits[0] / AQOR_PER_UQOR).toString(),
+    perDayUqor: (limits[1] / AQOR_PER_UQOR).toString(),
+    spentTodayUqor: (spent / AQOR_PER_UQOR).toString(),
+    paused,
+    nonce: nonce.toString(),
+    vendorApproved: approved,
+  };
+}
+
+/** Why the vault would refuse `data` from `ownerEvm`, or null if it would accept it. */
+async function vaultRefusal(ownerEvm: string, data: Hex): Promise<string | null> {
+  try {
+    await publicClient.call({ account: ownerEvm as Hex, to: VAULT, data });
+    return null;
+  } catch (err) {
+    if (err instanceof BaseError) {
+      const rev = err.walk((e) => e instanceof ContractFunctionRevertedError);
+      if (rev instanceof ContractFunctionRevertedError && rev.data?.errorName) return rev.data.errorName;
+      const raw = (err.walk((e) => typeof (e as { data?: unknown }).data === "string") as { data?: Hex } | null)?.data;
+      if (raw) {
+        try {
+          const { decodeErrorResult } = await import("viem");
+          return decodeErrorResult({ abi: VAULT_ABI, data: raw }).errorName;
+        } catch {}
+      }
+      return err.shortMessage;
+    }
+    return String(err);
+  }
+}
+
+const REFUSAL_WORDS: Record<string, string> = {
+  PayeeNotApproved: "the payee is not one you approved",
+  OverPaymentLimit: "the bill is over your per-payment limit",
+  OverDailyLimit: "it would go over your daily limit",
+  InsufficientBalance: "the vault does not hold enough",
+  VaultPaused: "you paused the vault",
+  AlreadyPaid: "the bill is already paid",
+  NotTheOwner: "the bill is not addressed to this account",
+  InvalidSignature: "the signature is not from the owner's post-quantum key",
+};
+export const refusalInWords = (name: string) => REFUSAL_WORDS[name] ? `${REFUSAL_WORDS[name]} (${name})` : name;
+
+/**
+ * Relay the owner's signed admin actions (approve a payee, set limits, pause,
+ * withdraw). Each carries an ML-DSA-87 signature the vault checks with
+ * pqcVerify, so the relayer adds nothing but the fee. Each is simulated first,
+ * so a bad signature costs nothing.
+ */
+export async function relayVaultAdmin(ownerEvm: string, items: { admin: VaultAdmin; signature: Hex }[]): Promise<Step[]> {
+  if (items.length === 0 || items.length > 4) throw new MandateError("Send one to four signed actions.");
+  const { relayer } = await keys();
+  const steps: Step[] = [];
+  const datas = items.map((i) => adminCalldata(ownerEvm as Hex, i.admin, i.signature));
+  // Nonces are consecutive, so only the first can be simulated on its own.
+  const first = await vaultRefusal(relayer.evmAddress, datas[0]);
+  if (first) throw new MandateError(`The vault would refuse this: ${refusalInWords(first)}.`);
+  await inVaultWindow(relayer, datas.length, "fenestella relayer", async (wallet) => {
+    for (let i = 0; i < datas.length; i++) {
+      const hash = await wallet.sendTransaction({ to: VAULT, data: datas[i], gas: 1_500_000n });
+      const r = await publicClient.waitForTransactionReceipt({ hash, timeout: 90_000 });
+      const what = describeAdmin(items[i].admin);
+      if (r.status !== "success") {
+        steps.push({ ok: false, text: `${what}: refused by the vault.`, tx: hash });
+        break;
+      }
+      steps.push({ ok: true, text: `${what}: checked by pqcVerify against your registered ML-DSA-87 key, and done.`, tx: hash });
+    }
+  });
+  return steps;
+}
+
+function describeAdmin(a: VaultAdmin): string {
+  switch (a.action) {
+    case "payee":
+      return `${a.approved ? "Approve" : "Remove"} payee ${a.payee.slice(0, 8)}…`;
+    case "limits":
+      return `Set limits: ${uqorToQor(a.perPayment / AQOR_PER_UQOR)} QOR a payment, ${uqorToQor(a.perDay / AQOR_PER_UQOR)} QOR a day`;
+    case "pause":
+      return a.paused ? "Pause the vault" : "Unpause the vault";
+    case "withdraw":
+      return `Withdraw ${uqorToQor(a.amount / AQOR_PER_UQOR)} QOR to your own account`;
+  }
+}
+
+/**
+ * Broadcast the owner's own signed EVM transaction that deposits into the vault
+ * (the owner signs it in the browser inside a window scoped to the vault; the
+ * EVM RPC does not accept browser requests). Only a deposit to the vault for
+ * the signer's own vault is passed on.
+ */
+export async function broadcastDeposit(raw: Hex): Promise<{ tx: string }> {
+  const t = parseTransaction(raw);
+  if (!t.to || t.to.toLowerCase() !== VAULT) throw new MandateError("Only a deposit into the Fenestella vault is passed on.");
+  if (!t.data) throw new MandateError("That is not a deposit.");
+  const call = decodeFunctionData({ abi: VAULT_ABI, data: t.data });
+  if (call.functionName !== "deposit") throw new MandateError("That is not a deposit.");
+  if (!t.value || t.value <= 0n || t.value > 5_000_000n * AQOR_PER_UQOR) throw new MandateError("A deposit is between 0.000001 and 5 QOR.");
+  const hash = await publicClient.sendRawTransaction({ serializedTransaction: raw });
+  const r = await publicClient.waitForTransactionReceipt({ hash, timeout: 90_000 });
+  if (r.status !== "success") throw new MandateError(`The deposit was refused (${hash}).`);
+  return { tx: hash };
+}
+
+/** What the browser needs to sign the owner's deposit transaction. */
+export async function evmTxParams(address: string) {
+  const [nonce, gasPrice] = await Promise.all([
+    publicClient.getTransactionCount({ address: address as Hex, blockTag: "pending" }),
+    publicClient.getGasPrice(),
+  ]);
+  return { nonce, gasPrice: gasPrice.toString(), chainId: net.evmChainId };
 }
 
 async function relayAgentCall(owner: string, to: Hex, valueUqor: bigint, data: Hex | undefined, memo: string) {
@@ -238,7 +395,7 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
   const t = input.terms;
   try {
     if (t.chainId !== net.chainId) throw new MandateError("This agent works on qorechain-diana only.");
-    if (t.bills.toLowerCase() !== BILLS.toLowerCase()) throw new MandateError("This agent pays bills on the Fenestella Bills contract only.");
+    if (t.bills.toLowerCase() !== VAULT) throw new MandateError("This agent pays bills from your Fenestella vault only.");
 
     verifyAnchor(await fetchTx(net.rest, input.anchorTx), t.owner, input.envelope);
     steps.push({ ok: true, text: "The owner signed this mandate: the anchor transaction is hybrid-signed by the owner and commits to this exact envelope.", tx: input.anchorTx });
@@ -248,20 +405,23 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
 
     if (Math.floor(Date.now() / 1000) > m.notAfter) throw new MandateError("The mandate has expired.");
     const owner = await readAccount("testnet", m.owner);
-    const bill = await publicClient.readContract({ address: BILLS, abi: BILLS_ABI, functionName: "billOf", args: [BigInt(m.billId)] });
+    const bill = await publicClient.readContract({ address: VAULT, abi: VAULT_ABI, functionName: "billOf", args: [BigInt(m.billId)] });
     const amountUqor = bill.amount / AQOR_PER_UQOR;
-    if (bill.payer.toLowerCase() !== owner.address.evm.toLowerCase()) throw new MandateError("That bill is not addressed to the owner.");
+    if (bill.owner.toLowerCase() !== owner.address.evm.toLowerCase()) throw new MandateError("That bill is not addressed to the owner.");
     if (bill.payee.toLowerCase() !== m.payee.toLowerCase()) throw new MandateError("That bill pays someone other than the mandate names.");
     if (bill.paid) throw new MandateError("That bill is already paid.");
     if (amountUqor > BigInt(m.maxUqor)) throw new MandateError(`The bill asks ${amountUqor} uqor; the mandate allows at most ${m.maxUqor}.`);
     steps.push({ ok: true, text: `Checked bill #${m.billId} on chain: unpaid, addressed to the owner, ${amountUqor} uqor to the payee the mandate names.` });
+    const wouldRefuse = await vaultRefusal(owner.address.evm, payBillCalldata(BigInt(m.billId)));
+    if (wouldRefuse) throw new MandateError(`Your vault would refuse this payment: ${refusalInWords(wouldRefuse)}. Nothing was sent.`);
+    const vs = await vaultState(owner.address.evm, m.payee);
+    steps.push({ ok: true, text: `Your vault allows it: payee approved with your post-quantum key, within ${uqorToQor(vs.perPaymentUqor)} QOR a payment and ${uqorToQor(vs.perDayUqor)} QOR a day, ${uqorToQor(vs.balanceUqor)} QOR in the vault.` });
 
     // No approving second opinion, no payment: an AI that is missing, down,
     // over its budget or unsure counts as a "no".
     {
       const { vendor } = await keys();
       const history = await billsFor(owner.address.evm);
-      const rule = owner.abstractAccount.rules.find((x) => x.enabled);
       const verdict = await secondOpinion({
         note: m.note,
         billId: m.billId,
@@ -270,7 +430,7 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
         payee: m.payee,
         payeeKnownAs: m.payee.toLowerCase() === vendor.evmAddress.toLowerCase() ? "Fenestella test vendor" : null,
         paidBeforeToPayee: history.filter((b) => b.paid && b.payee === m.payee.toLowerCase()).length,
-        capQor: rule ? uqorToQor(rule.perTxLimit) : null,
+        capQor: uqorToQor(vs.perPaymentUqor),
       });
       if (!verdict.approve) {
         steps.push({ ok: false, text: `The agent's AI (${verdict.model}) did not approve the payment: ${verdict.reason}` });
@@ -279,11 +439,11 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
       steps.push({ ok: true, text: `The agent's AI (${verdict.model}) gave its second opinion and approved: ${verdict.reason}` });
     }
 
-    const r = await relayAgentCall(m.owner, BILLS, amountUqor, payCalldata(BigInt(m.billId)), `fenestella agent: pay bill ${m.billId}`);
+    const r = await relayAgentCall(m.owner, VAULT, 0n, payBillCalldata(BigInt(m.billId)), `fenestella agent: pay bill ${m.billId}`);
     if (r.refused) {
       steps.push({ ok: false, text: `The chain refused the payment: ${r.refused}`, tx: r.tx });
     } else {
-      steps.push({ ok: true, text: "Paid. The relayer broadcast the agent's signed call and paid the fee; the chain checked it against the owner's spending rule.", tx: r.tx });
+      steps.push({ ok: true, text: "Paid from your vault. The relayer broadcast the agent's signed call and paid the fee; the chain checked the call against your spending rule, and the vault checked the payee and your limits.", tx: r.tx });
     }
   } catch (err) {
     steps.push({ ok: false, text: err instanceof Error ? err.message : "The agent stopped." });
@@ -292,19 +452,35 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
 }
 
 /**
- * What a stolen or misbehaving agent would try: send most of the owner's
- * balance to an outside address. The agent's own checks are skipped on
- * purpose; only the chain stands in the way.
+ * What a stolen agent key would try. The agent's own checks are skipped on
+ * purpose; only the chain and the vault stand in the way.
+ *  1. Send most of the owner's balance to an outside address.
+ *  2. Approve its own address as a payee in the vault.
+ *  3. Pay a bill from an address the owner never approved.
  */
 export async function rogueDrain(owner: string): Promise<Step[]> {
   const steps: Step[] = [];
+  const DEAD = "0x000000000000000000000000000000000000dEaD" as Hex;
   try {
     const t = await readAccount("testnet", owner);
-    const take = BigInt(t.balanceUqor) > 2_000_000n ? BigInt(t.balanceUqor) - 1_000_000n : 5_000_000n;
-    steps.push({ ok: true, text: `The agent key signs: send ${take} uqor (most of the balance) to 0x…dEaD. No mandate, no checks.` });
-    const r = await relayAgentCall(owner, "0x000000000000000000000000000000000000dEaD", take, undefined, "fenestella: rogue agent drill");
-    if (r.refused) steps.push({ ok: true, text: `Refused by the chain: ${r.refused}`, tx: r.tx });
-    else steps.push({ ok: false, text: "The chain accepted it. The account's spending rule does not bound this key.", tx: r.tx });
+    const take = BigInt(t.balanceUqor) > 2_000_000n ? BigInt(t.balanceUqor) - 1_000_000n : 1_000_000n;
+    steps.push({ ok: true, text: `Attack 1. The stolen agent key signs: send ${uqorToQor(take)} QOR (most of the balance) to 0x…dEaD.` });
+    const r1 = await relayAgentCall(owner, DEAD, take, undefined, "fenestella: stolen agent key, plain transfer");
+    steps.push(r1.refused ? { ok: true, text: `Refused by the chain: ${r1.refused}`, tx: r1.tx } : { ok: false, text: "The chain accepted it.", tx: r1.tx });
+
+    steps.push({ ok: true, text: "Attack 2. The key tries to approve its own address as a payee in your vault." });
+    const fake = adminCalldata(t.address.evm as Hex, { action: "payee", payee: DEAD, approved: true }, `0x${"00".repeat(4627)}`);
+    const r2 = await relayAgentCall(owner, VAULT, 0n, fake, "fenestella: stolen agent key, approve itself");
+    steps.push(r2.refused ? { ok: true, text: `Refused by the chain: ${r2.refused.split(":")[0]}. The key may call only payBill.`, tx: r2.tx } : { ok: false, text: "The chain accepted it.", tx: r2.tx });
+
+    steps.push({ ok: true, text: "Attack 3. A thief posts a bill to you, and the key pays it with the one call it is allowed." });
+    const { relayer } = await keys();
+    const thiefBill = (await billsFor(t.address.evm)).find((b) => !b.paid && b.payee === relayer.evmAddress.toLowerCase());
+    const bill = thiefBill ? { billId: thiefBill.id } : await postBillAs(relayer, t.address.evm, 900_000n, "fenestella thief");
+    const why = await vaultRefusal(t.address.evm, payBillCalldata(BigInt(bill.billId)));
+    const r3 = await relayAgentCall(owner, VAULT, 0n, payBillCalldata(BigInt(bill.billId)), "fenestella: stolen agent key, pay a thief");
+    if (why) steps.push({ ok: true, text: `The chain let the call through, and your vault refused it: ${refusalInWords(why)}. Nothing moved.`, tx: r3.tx });
+    else steps.push(r3.refused ? { ok: true, text: `Refused: ${r3.refused}`, tx: r3.tx } : { ok: false, text: "The vault paid the thief.", tx: r3.tx });
   } catch (err) {
     steps.push({ ok: false, text: err instanceof Error ? err.message : "The drill stopped." });
   }
@@ -329,7 +505,7 @@ export async function sampleInvoices(ownerEvm: string): Promise<{ id: string; la
     {
       id: "genuine",
       label: "Genuine invoice",
-      text: `From: billing@northwind-hosting.example\nSubject: Invoice ${ref} for November hosting\n\nHello,\n\nPlease find your invoice ${ref} dated ${today}.\nService: managed hosting, November 2026.\nAmount due: ${amount} QOR, payable through the Bills contract (bill #${bill?.id ?? "?"}) to our usual address ${vendor.evmAddress}.\nDue within 14 days.\n\nThank you,\nNorthwind Hosting accounts`,
+      text: `From: billing@northwind-hosting.example\nSubject: Invoice ${ref} for November hosting\n\nHello,\n\nPlease find your invoice ${ref} dated ${today}.\nService: managed hosting, November 2026.\nAmount due: ${amount} QOR, payable through your Fenestella vault (bill #${bill?.id ?? "?"}) to our usual address ${vendor.evmAddress}.\nDue within 14 days.\n\nThank you,\nNorthwind Hosting accounts`,
     },
     {
       id: "phishing",
@@ -356,5 +532,6 @@ export async function analyzeInvoice(owner: string, invoice: string) {
     agentAddress: agentAddress(agentKeyFor(agentKey, owner)),
     bills,
     knownVendor: { address: vendor.evmAddress.toLowerCase(), name: TEST_VENDOR_NAME },
+    vault: await vaultState(truth.address.evm, vendor.evmAddress),
   });
 }

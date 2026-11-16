@@ -30,8 +30,10 @@ export const PAY_SELECTOR = toFunctionSelector("pay(uint256)");
 export const AQOR_PER_UQOR = 1_000_000_000_000n;
 
 export interface LeashTerms {
-  /** The Bills contract the agent may call. */
+  /** The contract the agent may call (the owner's AgentVault, or the older Bills). */
   bills: string;
+  /** The one function of it the agent may call; defaults to Bills.pay. */
+  selector?: string;
   /** Most one payment may move, in uqor. */
   perTxUqor: bigint;
   /** Most all payments together may move per UTC day, in uqor. */
@@ -49,7 +51,7 @@ export function leashRule(t: LeashTerms) {
     perTxLimit: t.perTxUqor.toString(),
     dailyLimit: t.dailyUqor.toString(),
     allowedDenoms: ["uqor"],
-    allowedEvmCalls: [`${t.bills.toLowerCase()}/${PAY_SELECTOR}`],
+    allowedEvmCalls: [`${t.bills.toLowerCase()}/${t.selector ?? PAY_SELECTOR}`],
     denomLimits: [],
   };
 }
@@ -156,4 +158,17 @@ export async function agentExecuteEvm(opts: {
 
 export function payCalldata(billId: bigint): Hex {
   return encodeFunctionData({ abi: BILLS_ABI, functionName: "pay", args: [billId] });
+}
+
+/**
+ * Owner-signed: point the agent's leash at the owner's AgentVault. The agent
+ * key may then call only `AgentVault.payBill`, and the account's own balance
+ * is capped at 1 uqor a payment and a day: payments come from the vault.
+ */
+export function vaultLeashMessage(owner: string, vault: string, selector: string): ChainMessage {
+  return msg.abstractaccount.updateSpendingRules({
+    owner,
+    accountAddress: owner,
+    rules: [leashRule({ bills: vault, selector, perTxUqor: 1n, dailyUqor: 1n, expiryUnix: 0 })],
+  }) as ChainMessage;
 }

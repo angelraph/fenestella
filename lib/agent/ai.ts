@@ -6,6 +6,7 @@ import { readAccount } from "../chain/read";
 import { uqorToQor } from "../format";
 import { applyGuard } from "./guard";
 import type { BillView } from "./server";
+import type { VaultView } from "./vault";
 
 /**
  * The agent's judgement.
@@ -157,6 +158,8 @@ export async function reviewInvoice(input: {
   agentAddress: string;
   bills: BillView[];
   knownVendor: { address: string; name: string };
+  /** The owner's AgentVault: where the agent's real limits live. */
+  vault?: VaultView;
 }): Promise<{ review: Review; guard: string[]; calls: ToolCallLog[]; model: string }> {
   const p = provider();
   if (!p) throw new Error("The agent's AI is not configured on this server.");
@@ -171,7 +174,7 @@ export async function reviewInvoice(input: {
     const key = t.abstractAccount.authenticators.find((a) => a.pubkeyHex.toLowerCase() === input.agentAddress.slice(2).toLowerCase());
     leashFacts = {
       agent_linked: !!key && !key.revoked,
-      per_payment_cap_qor: rule ? uqorToQor(rule.perTxLimit) : null,
+      per_payment_cap_qor: input.vault ? uqorToQor(input.vault.perPaymentUqor) : rule ? uqorToQor(rule.perTxLimit) : null,
     };
     return { t, rule, key };
   };
@@ -206,15 +209,27 @@ export async function reviewInvoice(input: {
     }),
     tool({
       name: "agent_leash",
-      description: "The limits the chain enforces on the agent for this owner: per-payment cap, daily cap, allowed calls, expiry, and whether the agent is linked.",
+      description: "The limits on the agent for this owner: the owner's vault (balance, per-payment and daily limits, whether the vendor is an approved payee), the chain rule on the owner's account (allowed calls, expiry), and whether the agent is linked.",
       schema: z.object({}),
       run: async () => {
         const { rule, key } = await readLeash();
+        const v = input.vault;
         const out = {
           agent_linked: !!key && !key.revoked,
-          per_payment_cap_qor: rule ? uqorToQor(rule.perTxLimit) : null,
-          daily_cap_qor: rule ? uqorToQor(rule.dailyLimit) : null,
-          allowed_calls: rule?.allowedEvmCalls ?? [],
+          per_payment_cap_qor: v ? uqorToQor(v.perPaymentUqor) : rule ? uqorToQor(rule.perTxLimit) : null,
+          daily_cap_qor: v ? uqorToQor(v.perDayUqor) : rule ? uqorToQor(rule.dailyLimit) : null,
+          vault: v
+            ? {
+                balance_qor: uqorToQor(v.balanceUqor),
+                spent_today_qor: uqorToQor(v.spentTodayUqor),
+                paused: v.paused,
+                known_vendor_is_approved_payee: v.vendorApproved,
+                note: "The agent pays only from this vault, only to payees the owner approved with their post-quantum key, within these limits.",
+              }
+            : null,
+          chain_rule_on_owner_account: rule
+            ? { allowed_calls: rule.allowedEvmCalls, per_tx_uqor: rule.perTxLimit, note: "The owner's own balance is nearly untouchable by the agent key; payments come from the vault." }
+            : null,
           expiry_unix: key?.expiryUnix ?? null,
         };
         calls.push({ tool: "agent_leash", input: {}, summary: out.agent_linked ? `caps ${out.per_payment_cap_qor} / ${out.daily_cap_qor} QOR` : "agent not linked" });
