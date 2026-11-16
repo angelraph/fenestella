@@ -13,7 +13,7 @@ import { NETWORKS } from "../networks";
 import { LocalSigner } from "../signer/local";
 import { agentAddress, agentExecuteEvm, agentLinkProof, AQOR_PER_UQOR, BILLS_ABI, payCalldata } from "./leash";
 import { MandateError, openMandate, verifyAnchor, type MandateTerms } from "./mandate";
-import { AI_MODEL, aiReady, reviewInvoice, secondOpinion } from "./ai";
+import { aiModel, aiReady, reviewInvoice, secondOpinion } from "./ai";
 import { uqorToQor } from "../format";
 
 /**
@@ -113,7 +113,7 @@ export async function agentInfo(owner?: string): Promise<AgentInfo> {
     chainId: net.chainId,
     sealRecipient: { mlkemPublicKey: b64(r.mlkemPublicKey), x25519PublicKey: b64(r.x25519PublicKey!) },
     suggestedTerms: { perTxUqor: "1000000", dailyUqor: "3000000", days: 14 },
-    ai: { ready: aiReady(), model: AI_MODEL },
+    ai: { ready: aiReady(), model: aiModel() },
   };
 }
 
@@ -256,7 +256,9 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
     if (amountUqor > BigInt(m.maxUqor)) throw new MandateError(`The bill asks ${amountUqor} uqor; the mandate allows at most ${m.maxUqor}.`);
     steps.push({ ok: true, text: `Checked bill #${m.billId} on chain: unpaid, addressed to the owner, ${amountUqor} uqor to the payee the mandate names.` });
 
-    if (aiReady()) {
+    // No approving second opinion, no payment: an AI that is missing, down,
+    // over its budget or unsure counts as a "no".
+    {
       const { vendor } = await keys();
       const history = await billsFor(owner.address.evm);
       const rule = owner.abstractAccount.rules.find((x) => x.enabled);
@@ -271,10 +273,10 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
         capQor: rule ? uqorToQor(rule.perTxLimit) : null,
       });
       if (!verdict.approve) {
-        steps.push({ ok: false, text: `The agent's AI vetoed the payment: ${verdict.reason}` });
+        steps.push({ ok: false, text: `The agent's AI (${verdict.model}) did not approve the payment: ${verdict.reason}` });
         return steps;
       }
-      steps.push({ ok: true, text: `The agent's AI (${AI_MODEL}) gave its second opinion and approved: ${verdict.reason}` });
+      steps.push({ ok: true, text: `The agent's AI (${verdict.model}) gave its second opinion and approved: ${verdict.reason}` });
     }
 
     const r = await relayAgentCall(m.owner, BILLS, amountUqor, payCalldata(BigInt(m.billId)), `fenestella agent: pay bill ${m.billId}`);

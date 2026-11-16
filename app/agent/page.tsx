@@ -11,7 +11,7 @@ export default function AgentPage() {
           An AI agent that can pay your bills, and <span className="hl">nothing else</span>.
         </h1>
         <p className="lede">
-          The bill payer reads your invoices with Claude, checks them against the chain with its own tools, and spots
+          The bill payer reads your invoices with an AI model, checks them against the chain with its own tools, and spots
           scams before you sign. It acts without holding your keys, takes orders only from mandates sealed with
           post-quantum encryption and signed with your post-quantum key, and the chain refuses everything outside its
           leash. The AI can be fooled. The leash cannot.
