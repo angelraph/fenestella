@@ -1,0 +1,8 @@
+# Not needed to build or run the site.
+video/build
+test-results
+playwright-report
+contracts/out
+contracts/cache
+contracts/lib
+.keys
