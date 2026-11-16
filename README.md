@@ -77,6 +77,16 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | Agent verifies the anchor, opens the envelope, checks bill #3, pays through the relayer | Paid 0.4 QOR, no window open | [7A9F06EE…9D18](https://fenestella.vercel.app/tx/7A9F06EE6FA017A934E58A51C61C3FB5F21AD73DF082F27E152C39C48D349D18) |
 | Stolen agent key signs "send 147 QOR to 0x…dEaD" | **Refused by the chain**: per-tx limit exceeded | [8210C925…A042](https://fenestella.vercel.app/tx/8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042) |
 
+**Autopay, live** (16 November 2026, [`scripts/spike-autopay.ts`](scripts/spike-autopay.ts) and the scheduled [GitHub Actions round](.github/workflows/autopay.yml))
+
+| Step | Result | Receipt |
+| --- | --- | --- |
+| Owner signs a standing permission: pay Northwind up to 0.5 QOR a bill, 30 days (a memo on a 1 uqor self-send, ML-DSA-87 signed) | The agent reads it from the chain | [8A9C3D3C…E9C3](https://fenestella.vercel.app/tx/8A9C3D3CE57E0DCD3ADB157F0169D947D4B7295ABDB7FFCCB575223E9DADE9C3) |
+| Round run by the owner: two 0.4 QOR bills | Both paid from the vault, each checked by the vault and approved by the AI | [8846997C…5E51](https://fenestella.vercel.app/tx/8846997C1C538692D17A319694ECD842B55A8965A96822DC32400142C3B65E51), [E90CB50F…52C2](https://fenestella.vercel.app/tx/E90CB50F8722B57EDD83A7A8B8FE8CE113424070F0B168D0CDE04DDDFC3752C2) |
+| Same round: a 0.6 QOR bill | **Left unpaid**: over the 0.5 QOR autopay limit | no transaction |
+| Owner turns autopay off; next round | Nothing paid | [C862CF3F…2E20](https://fenestella.vercel.app/tx/C862CF3FDF63823E18B90ECC8A26B12751328B701D0C529DCBC82D1FDCE62E20) |
+| Autopay on again; **scheduled round** (GitHub Actions, no human): a 0.3 QOR bill | Paid; the 0.6 QOR bill still left | [70826480…467C](https://fenestella.vercel.app/tx/708264807C316FF2E8EE7F4406832E5907F2CBBE8E13D8EA93429B9D4842467C) |
+
 **The agent with AgentVault v2, live** (17 November 2026, [`scripts/spike-vault.ts`](scripts/spike-vault.ts) against fenestella.vercel.app; owner `qor1072yq0ksuukxkym8d9r0mpr3upz4awf00u5ew7`)
 
 | Step | Result | Receipt |
@@ -174,6 +184,11 @@ It also says what people miss: the window's cap counts native QOR only, a token 
 - **Mandates are sealed and signed.** The owner writes the instruction in the browser. It is sealed with QoreSeal (ML-KEM-1024 + X25519, AES-256-GCM) to the agent and to the owner, with the bill's terms as the associated data. The owner then signs a 1 uqor self-send whose memo is `fenestella-mandate:<SHA3-256 of the envelope>`; QoreX shows memos, so no custom message or arbitrary signing is needed. Before paying, the agent checks that anchor (hybrid-signed, from the owner, same fingerprint), opens the envelope against the terms, and checks the bill on chain.
 - **Honest limits.** An approved payee can still be paid real bills within the vault's limits, so approve only payees you trust. Funding the vault and signing its rules happen in the browser with the Dashboard wallet on testnet (QoreX does not sign raw EVM transactions or arbitrary bytes). The agent and relayer keys are testnet throwaways held by the server.
 
+### Autopay: the agent acts on its own
+- **A standing permission, signed on chain.** The owner signs one transaction: a 1 uqor transfer to itself whose memo reads `fenestella-autopay:v1:on:<payee>:<max per bill>:<until>`. It is hybrid-signed, so only the owner's post-quantum key can write it, and QoreX shows the memo before signing. Turning it off is another memo; the newest one wins; it lasts at most 90 days. Nothing is stored on a server: the agent reads it from the chain every round ([`lib/agent/autopay.ts`](lib/agent/autopay.ts), 16 tests).
+- **Rounds run by themselves.** Vercel cron once a day and a GitHub Actions schedule every two hours call the round (protected by `CRON_SECRET`); the owner can also press *Let the agent check now*. A round finds owners from the vault's `BillCreated` events and pays unpaid bills from payees on autopay, oldest first, three at most.
+- **Nothing widens.** Every payment still has to pass the vault (approved payee, limits, balance) and the agent's AI; a bill above the autopay limit is left for the owner.
+
 ### The agent's AI
 The agent's brain is a language model ([`lib/agent/ai.ts`](lib/agent/ai.ts)). The live site runs OpenAI `gpt-5-mini`; set `ANTHROPIC_API_KEY` instead and the same tools and checks run on Claude (`claude-opus-5-5`). It does two jobs, and neither can widen the leash:
 - **It reads invoices.** Paste an invoice (or pick one of three samples: a genuine one, a phishing one, a prompt injection). The AI calls three tools that read the chain (`list_unpaid_bills`, `payee_history`, `agent_leash`), matches the invoice to a real bill, and returns a structured verdict: draft a mandate, hold, or refuse, with flags such as `changed_payment_details`, `urgency_pressure` or `instruction_injection`. Every tool call is shown on screen. Invoice text is treated as untrusted data.
@@ -203,7 +218,7 @@ Requires Node.js 22 or newer.
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 57 unit tests
+npm test           # 73 unit tests
 npx playwright test  # end-to-end, against the live testnet, no wallet needed
 cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 45 contract tests
 ```
@@ -230,7 +245,7 @@ npx tsx scripts/receipt.ts         # a pqcVerify-checked receipt, and a forged o
 app/                 Next.js pages: console, /account/[address], /agent, /tx/[hash] receipts, /request, /demo, /docs, /faq, /security
 app/api/             account reads, and the agent: /api/agent, /bill, /run, /rogue, /analyze (the AI)
 lib/exposure.ts      chain state -> what a leaked classical key can do
-lib/agent/           leash (rule, link, execute), mandate (seal, anchor, verify), ai (OpenAI or Claude), guard (rules over the AI), server
+lib/agent/           leash, vault (AgentVault calls and signed admin), mandate, autopay (standing permission), ai, guard, server
 lib/signer/          QoreX signer, local / Dashboard signer (testnet only)
 lib/wallets/         wallet detection
 packages/connect/    @fenestella/connect: requestWindow()

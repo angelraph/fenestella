@@ -2,7 +2,9 @@
 // edge address that this network can reach (76.76.21.21 times out here).
 // Affects this one Node process; no system setting is changed.
 const dns = require("node:dns");
-const PIN = process.env.VERCEL_PIN_IP || "76.76.21.98";
+// Several Vercel edge addresses serve the API; if one stops answering, set
+// VERCEL_PIN_IP to another (76.76.21.61, 76.76.21.98, 76.76.21.123, ...).
+const PIN = process.env.VERCEL_PIN_IP || "76.76.21.61";
 const HOSTS = new Set(["api.vercel.com", "vercel.com"]);
 const orig = dns.lookup;
 dns.lookup = function (hostname, options, callback) {
