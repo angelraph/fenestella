@@ -25,7 +25,36 @@ const limitArg = args.indexOf("--limit");
 const LIMIT = limitArg >= 0 ? Number(args[limitArg + 1]) : Infinity;
 const nets = (args.slice(1).filter((a) => a === "testnet" || a === "mainnet") as NetworkId[]);
 const networks: NetworkId[] = nets.length ? nets : ["testnet", "mainnet"];
-const CONCURRENCY = 12;
+const CONCURRENCY = 8;
+
+/**
+ * The fetch the scan gives readAccount: chain-wide answers (latest block,
+ * module config) are cached for 30 s instead of fetched per account, and a
+ * throttled answer (429 or 5xx) is retried with backoff instead of becoming a
+ * "could not read" section.
+ */
+const shared = new Map<string, { at: number; body: string; status: number }>();
+const SHARED = /\/blocks\/latest$|\/blocks\/\d+$|\/abstractaccount\/v1\/config$/;
+async function scanFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const url = String(input);
+  if (SHARED.test(url)) {
+    const hit = shared.get(url.replace(/\/blocks\/\d+$/, "/blocks/older"));
+    if (hit && Date.now() - hit.at < 30_000) return new Response(hit.body, { status: hit.status });
+  }
+  for (let i = 0; ; i++) {
+    const r = await fetch(input, init).catch(() => null);
+    if (r && r.status !== 429 && r.status < 500) {
+      if (SHARED.test(url)) {
+        const body = await r.text();
+        shared.set(url.replace(/\/blocks\/\d+$/, "/blocks/older"), { at: Date.now(), body, status: r.status });
+        return new Response(body, { status: r.status });
+      }
+      return r;
+    }
+    if (i >= 5) return r ?? new Response("{}", { status: 503 });
+    await new Promise((res) => setTimeout(res, 400 * 2 ** i + Math.random() * 300));
+  }
+}
 const HISTORY_URL = (n: NetworkId) => `https://raw.githubusercontent.com/angelraph/fenestella/radar-data/radar/${n}.json`;
 
 async function getJson(url: string, tries = 3): Promise<Json> {
@@ -106,7 +135,7 @@ async function scan(network: NetworkId) {
     await mapLimit(pending, conc, async (addr) => {
       if (pauseMs) await new Promise((r) => setTimeout(r, pauseMs));
       try {
-        const t = await readAccount(network, addr);
+        const t = await readAccount(network, addr, scanFetch as never);
         if (assessExposure(t).level === "unknown" && pass < 3) retry.push(addr);
         else reads.set(addr, t);
       } catch {
