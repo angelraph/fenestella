@@ -1,6 +1,6 @@
 # Fenestella demo video: transcript
 
-Voice: Microsoft neural voice "Andrew" (edge-tts). Length: about 2 minutes 50 seconds.
+Voice: Microsoft neural voice "Andrew" (edge-tts). Length: 2 minutes 55 seconds.
 
 ## Intro
 
@@ -24,20 +24,24 @@ Now open a fenestella. Pick a preset, name the one contract you need, and set th
 
 ## 05. The bill-paying agent
 
-For the agents track, meet the bill payer. It gets its own key, linked with one permission and a spending rule: only Bills dot pay, at most one QOR a payment, and three a day. A vendor posts a bill. You write the mandate. It is sealed to the agent with ML-KEM-1024, and you sign its fingerprint on chain with your post-quantum key. The agent proves the mandate is yours, opens it, checks the bill, and pays, with no window open on your account.
+For the agents track, meet the bill payer. It gets its own key, linked with one permission and a spending rule the chain enforces: only Bills dot pay, at most one QOR a payment, and three a day. A vendor posts a bill.
 
-## 06. Now try to break it
+## 06. The agent's AI
 
-Now steal the agent's key, and try to drain the account. No mandate, no checks. The chain refuses it: per-transaction limit exceeded.
+The agent has an AI brain. Paste the invoice you got. This one is phishing: a new wallet, five QOR, pay within the hour. The AI checks the chain with its own tools, finds no bill to match, and refuses, saying why. The genuine invoice matches the bill and the payee, so it drafts the mandate.
 
-## 07. For builders
+## 07. A sealed, signed mandate
 
-Builders get one call: request window. Your app asks for exactly what it needs. The user sees your real address and the limits in plain words, and approves in their own wallet.
+The mandate is sealed to the agent with ML-KEM-1024, and you sign its fingerprint on chain with your post-quantum key. The agent proves it is yours, checks the bill, asks its AI for a second opinion, and pays, with no window open on your account.
 
-## 08. Docs, FAQ, security
+## 08. Now try to break it
 
-The docs, the FAQ and a plain security page explain how it works, and what a window cannot stop.
+Now steal the agent's key, and try to drain the account. No mandate, no checks. The chain refuses it: per-transaction limit exceeded. The AI can be fooled. The leash cannot.
+
+## 09. For builders
+
+Builders get one call: request window. Your app asks for exactly what it needs, the user sees your real address and the limits in plain words, and approves in their own wallet. The chain grants exactly that, nothing wider.
 
 ## Outro
 
-Every result you saw is a real testnet transaction, recorded in the repository. Fenestella. See how far your key reaches, and keep it small.
+Every result you saw is a real testnet transaction, linked in the repository, with a threat model and a public audit. Fenestella. See how far your key reaches, and keep it small.

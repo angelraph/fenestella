@@ -1,6 +1,6 @@
 {
   "voice": "en-US-AndrewMultilingualNeural",
-  "rate": "+2%",
+  "rate": "+6%",
   "scenes": [
     {
       "id": "intro",
@@ -30,27 +30,32 @@
     {
       "id": "agent",
       "title": "The bill-paying agent",
-      "text": "For the agents track, meet the bill payer. It gets its own key, linked with one permission and a spending rule: only Bills dot pay, at most one QOR a payment, and three a day. A vendor posts a bill. You write the mandate. It is sealed to the agent with ML-KEM-1024, and you sign its fingerprint on chain with your post-quantum key. The agent proves the mandate is yours, opens it, checks the bill, and pays, with no window open on your account."
+      "text": "For the agents track, meet the bill payer. It gets its own key, linked with one permission and a spending rule the chain enforces: only Bills dot pay, at most one QOR a payment, and three a day. A vendor posts a bill."
+    },
+    {
+      "id": "ai",
+      "title": "The agent's AI",
+      "text": "The agent has an AI brain. Paste the invoice you got. This one is phishing: a new wallet, five QOR, pay within the hour. The AI checks the chain with its own tools, finds no bill to match, and refuses, saying why. The genuine invoice matches the bill and the payee, so it drafts the mandate."
+    },
+    {
+      "id": "mandate",
+      "title": "A sealed, signed mandate",
+      "text": "The mandate is sealed to the agent with ML-KEM-1024, and you sign its fingerprint on chain with your post-quantum key. The agent proves it is yours, checks the bill, asks its AI for a second opinion, and pays, with no window open on your account."
     },
     {
       "id": "attack",
       "title": "Now try to break it",
-      "text": "Now steal the agent's key, and try to drain the account. No mandate, no checks. The chain refuses it: per-transaction limit exceeded."
+      "text": "Now steal the agent's key, and try to drain the account. No mandate, no checks. The chain refuses it: per-transaction limit exceeded. The AI can be fooled. The leash cannot."
     },
     {
       "id": "dapps",
       "title": "For builders",
-      "text": "Builders get one call: request window. Your app asks for exactly what it needs. The user sees your real address and the limits in plain words, and approves in their own wallet."
-    },
-    {
-      "id": "docs",
-      "title": "Docs, FAQ, security",
-      "text": "The docs, the FAQ and a plain security page explain how it works, and what a window cannot stop."
+      "text": "Builders get one call: request window. Your app asks for exactly what it needs, the user sees your real address and the limits in plain words, and approves in their own wallet. The chain grants exactly that, nothing wider."
     },
     {
       "id": "outro",
       "title": "",
-      "text": "Every result you saw is a real testnet transaction, recorded in the repository. Fenestella. See how far your key reaches, and keep it small."
+      "text": "Every result you saw is a real testnet transaction, linked in the repository, with a threat model and a public audit. Fenestella. See how far your key reaches, and keep it small."
     }
   ]
 }

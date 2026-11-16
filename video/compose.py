@@ -24,7 +24,7 @@ FPS = 30
 DRAFT = "--draft" in sys.argv
 LEAD = 0.45   # silence before the voice starts in a scene
 TAIL = 0.80   # picture after the voice ends
-MAX_SPEED = 1.30
+MAX_SPEED = 1.50
 
 # Transition into each scene (by index), and its length.
 TRANSITIONS = {
@@ -33,6 +33,8 @@ TRANSITIONS = {
     "connect": ("fade", 0.5),
     "window": ("smoothup", 0.6),
     "agent": ("smoothleft", 0.6),
+    "ai": ("smoothup", 0.6),
+    "mandate": ("fade", 0.5),
     "attack": ("fade", 0.5),
     "dapps": ("smoothleft", 0.6),
     "docs": ("fade", 0.5),

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { FenestellaError, requestWindow, type GrantedWindow } from "@fenestella/connect";
 import { uqorToQor } from "@/lib/format";
 
-const SNIPPET = `import { requestWindow } from "@fenestella/connect";
+const SNIPPET = `// npm install @fenestella/connect
+import { requestWindow } from "@fenestella/connect";
 
 const granted = await requestWindow({
   reason: "Pay this month's invoices from the Bills contract.",

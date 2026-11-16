@@ -13,7 +13,7 @@ On QoreChain that opening is real. A stolen classical (ECDSA) key can only act t
 1. **See the truth.** Paste any address. One sentence answers the only question that matters: *if this account's classical key leaked right now, what could an attacker still do?*
 2. **Open a fenestella.** A window limited to the one contract you need, or to plain transfers, with a count, a cap and an expiry. Close it in one click.
 3. **Put an agent on a leash.** A bill-paying AI agent with its own key, bounded by a spending rule the chain enforces. It takes orders only from mandates that are sealed with ML-KEM-1024 and signed on chain with your post-quantum key.
-4. **Let apps ask.** One call, `requestWindow()`, for any dApp or agent to ask for exactly the window it needs.
+4. **Let apps ask.** One call, `requestWindow()`, for any dApp or agent to ask for exactly the window it needs: `npm install @fenestella/connect`.
 
 Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Developer Fest · Category: **Post-Quantum AI Agents** · Network: `qorechain-diana` (testnet, EVM chain id 9800).
 
@@ -167,7 +167,7 @@ The AI can say no; it can never make a yes bigger than the owner's on-chain rule
 
 ### Windows and requests
 - Messages are built with `openEvmWindowMsg` / `closeEvmWindowMsg` from `@qorechain/sdk`. With QoreX the page only supplies messages; the wallet shows, hybrid-signs and broadcasts them.
-- `@fenestella/connect` ([`packages/connect`](packages/connect)) is dependency-free. `requestWindow()` opens an approval popup; the caller's origin comes from the browser, never from the message; the bounds are restated by Fenestella in plain words; and the result is the window as the chain stored it.
+- `@fenestella/connect` ([on npm](https://www.npmjs.com/package/@fenestella/connect): `npm install @fenestella/connect`; source in [`packages/connect`](packages/connect)) is dependency-free, and tested by installing the packed tarball into a fresh project under both `nodenext` and `bundler` resolution. `requestWindow()` opens an approval popup; the caller's origin comes from the browser, never from the message; the bounds are restated by Fenestella in plain words; and the result is the window as the chain stored it.
 
 ### Wallets
 QoreX through `@qorechain/qorex-types`, Keplr-family wallets with the chain descriptor from `@qorechain/wallet-adapter`, EVM wallets through EIP-6963, and the QoreChain Dashboard testnet wallet through its revealed phrase (kept in tab memory, and refused unless it opens the address you name and its post-quantum key matches the one on chain).

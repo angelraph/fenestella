@@ -63,10 +63,11 @@ export default function DocsPage() {
 
       <h2 id="request">Ask for a window</h2>
       <p>
-        <code>@fenestella/connect</code> has no dependencies. It is in{" "}
-        <a href="https://github.com/angelraph/fenestella/tree/main/packages/connect">packages/connect</a> and is not on
-        npm yet, so copy the folder or install it from the repository.
+        <code>@fenestella/connect</code> has no dependencies and is{" "}
+        <a href="https://www.npmjs.com/package/@fenestella/connect">on npm</a> (source in{" "}
+        <a href="https://github.com/angelraph/fenestella/tree/main/packages/connect">packages/connect</a>):
       </p>
+      <pre className="cli">npm install @fenestella/connect</pre>
       <pre className="cli">{REQUEST}</pre>
       <table>
         <thead>

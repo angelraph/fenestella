@@ -282,41 +282,75 @@ async function main() {
     await hold(1.6);
   });
 
+  // The agent page: 0 link, 1 bill, 2 the AI, 3 the mandate, 4 the stolen key.
+  const step = (n: number) => page.locator(".agent-step").nth(n);
+
   await scene("agent", async () => {
     await scrollTo(0, 700);
     await click(page.locator(".site-nav a", { hasText: "Agent" }));
     await page.getByRole("button", { name: "Link the agent" }).waitFor();
     await hold(1.4);
-    await scrollTo(page.locator(".agent-step").nth(0), 900, 90);
-    await hover(page.locator(".agent-step").nth(0).locator(".summary"), 700);
+    await scrollTo(step(0), 900, 90);
+    await hover(step(0).locator(".summary"), 700);
     await hold(2.2);
     await click(page.getByRole("button", { name: "Link the agent" }));
-    await rec.waiting(() => page.locator(".agent-step").nth(0).locator(".pill.active").waitFor(), 1.0, 0.3);
-    await hover(page.locator(".agent-step").nth(0).locator(".summary"), 600);
-    await hold(2.4);
-    await scrollTo(page.locator(".agent-step").nth(1), 900, 90);
+    await rec.waiting(() => step(0).locator(".pill.active").waitFor(), 1.0, 0.3);
+    await hover(step(0).locator(".summary"), 600);
+    await hold(2.0);
+    await scrollTo(step(1), 900, 90);
     await click(page.getByRole("button", { name: /Ask the vendor/ }));
     await rec.waiting(() => page.locator(".bill-list li").first().waitFor(), 1.0, 0.3);
-    await hold(1.6);
-    await scrollTo(page.locator(".agent-step").nth(2), 1000, 90);
-    await hover(page.locator(".agent-step").nth(2).locator(".summary"), 700);
-    await hold(2.0);
-    await click(page.getByRole("button", { name: /Seal, sign and send/ }));
-    const steps = page.locator(".agent-step").nth(2).locator(".steps li");
-    await rec.waiting(() => steps.nth(1).waitFor(), 1.0, 0.3);
     await hold(1.4);
-    await rec.waiting(() => steps.nth(5).waitFor(), 0.6, 0.2);
-    for (let i = 2; i <= 5; i++) {
-      await hover(steps.nth(i), 500);
-      await hold(1.3);
+  });
+
+  await scene("ai", async () => {
+    await scrollTo(step(2), 1000, 90);
+    const sample = (name: string) => step(2).getByRole("button", { name });
+    await sample("Phishing: new address, urgent").waitFor();
+    await click(sample("Phishing: new address, urgent"));
+    await hold(1.2);
+    await hover(step(2).locator("#ai-invoice"), 600);
+    await hold(1.6);
+    await click(step(2).getByRole("button", { name: "Review with the agent's AI" }));
+    await rec.waiting(() => step(2).locator(".ai-result").waitFor(), 1.0, 0.3);
+    await scrollTo(step(2).locator(".ai-result"), 900, 120);
+    await hover(step(2).locator(".ai-decision"), 600);
+    await hold(1.6);
+    await hover(step(2).locator(".ai-result .list.warn li").first(), 600);
+    await hold(2.4);
+    await scrollTo(step(2), 900, 90);
+    await click(sample("Genuine invoice"));
+    await hold(0.6);
+    await click(step(2).getByRole("button", { name: "Review with the agent's AI" }));
+    await rec.waiting(() => step(2).locator('.ai-result[data-decision="draft_mandate"]').waitFor(), 1.0, 0.3);
+    await scrollTo(step(2).locator(".ai-result"), 900, 120);
+    await hover(step(2).locator(".ai-decision"), 600);
+    await hold(1.6);
+    await click(step(2).getByRole("button", { name: "Use this draft for the mandate" }));
+    await hold(1.4);
+  });
+
+  await scene("mandate", async () => {
+    await scrollTo(step(3), 900, 90);
+    await hover(step(3).locator(".summary"), 700);
+    await hold(1.6);
+    await click(page.getByRole("button", { name: /Seal, sign and send/ }));
+    const steps = step(3).locator(".steps li");
+    await rec.waiting(() => steps.nth(1).waitFor(), 1.0, 0.3);
+    await hold(1.2);
+    await rec.waiting(() => steps.filter({ hasText: /^Paid/ }).waitFor(), 0.6, 0.2);
+    const n = await steps.count();
+    for (let i = 2; i < n; i++) {
+      await hover(steps.nth(i), 450);
+      await hold(i === n - 2 ? 1.8 : 1.0);
     }
-    await hold(1.0);
+    await hold(0.8);
   });
 
   await scene("attack", async () => {
-    await scrollTo(page.locator(".agent-step").nth(3), 900, 90);
+    await scrollTo(step(4), 900, 90);
     await click(page.getByRole("button", { name: /Play the stolen agent key/ }));
-    const steps = page.locator(".agent-step").nth(3).locator(".steps li");
+    const steps = step(4).locator(".steps li");
     await rec.waiting(() => steps.nth(1).waitFor(), 1.0, 0.2);
     await hover(steps.nth(1), 700);
     await hold(4.6);
@@ -332,18 +366,6 @@ async function main() {
     await hold(3.0);
     await hover(page.getByRole("button", { name: "Request a window" }), 800);
     await hold(3.0);
-  });
-
-  await scene("docs", async () => {
-    await scrollTo(0, 600);
-    await click(page.locator(".site-nav a", { hasText: "FAQ" }));
-    await page.locator(".faq summary").first().waitFor();
-    await hold(0.8);
-    await click(page.locator(".faq summary", { hasText: "spending cap" }));
-    await hold(1.9);
-    await scrollTo(0, 500);
-    await click(page.locator(".site-footer a", { hasText: "Security" }), 700);
-    await hold(1.1);
   });
 
   await scene("outro", async () => {
