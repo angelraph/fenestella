@@ -1,13 +1,16 @@
 /**
- * Deploy FenestellaReceipts and Bills to qorechain-diana.
+ * Deploy contracts to qorechain-diana and record them in deployments.testnet.json
+ * (existing entries are kept).
  *
- *   cd contracts && forge build && cd .. && npx tsx scripts/deploy.ts
+ *   cd contracts && forge build && cd .. && npx tsx scripts/deploy.ts [Name ...]
+ *
+ * With no names it deploys FenestellaReceipts and Bills.
  *
  * Contract creation is an EVM transaction, so the deployer opens a short,
  * unscoped window for exactly two transactions (a targets window refuses
  * contract creation), deploys, and closes the window again.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createPublicClient, createWalletClient, http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { readAccount } from "../lib/chain/read";
@@ -37,9 +40,10 @@ async function main() {
   const wallet = createWalletClient({ account, chain, transport: http(net.evmRpc) });
   console.log(`Deployer ${signer.address}\n         ${signer.evmAddress}`);
 
-  step(1, "Open a two-transaction window for the deployment");
+  const names = process.argv.slice(2).length ? process.argv.slice(2) : ["FenestellaReceipts", "Bills"];
+  step(1, `Open a ${names.length}-transaction window for the deployment`);
   const opened = await signer.signAndBroadcast(
-    [openWindowMessage(signer.address, { blocks: 200, maxTxs: 2, maxValueUqor: "5000000" })],
+    [openWindowMessage(signer.address, { blocks: 200, maxTxs: names.length, maxValueUqor: "5000000" })],
     "fenestella: deploy window",
   );
   ok(`opened: ${opened.txHash}`);
@@ -47,7 +51,7 @@ async function main() {
   const deployed: Record<string, { address: string; txHash: string; block: string }> = {};
   let n = 2;
   try {
-    for (const name of ["FenestellaReceipts", "Bills"]) {
+    for (const name of names) {
       step(n++, `Deploy ${name}`);
       const { abi, bytecode } = artifact(name);
       const hash = await wallet.deployContract({ abi, bytecode });
@@ -67,12 +71,13 @@ async function main() {
     }
   }
 
+  const prev = existsSync("deployments.testnet.json") ? JSON.parse(readFileSync("deployments.testnet.json", "utf8")) : {};
   const out = {
     network: net.chainId,
     evmChainId: net.evmChainId,
     deployer: { cosmos: signer.address, evm: signer.evmAddress },
-    deployedAt: new Date().toISOString(),
-    contracts: deployed,
+    deployedAt: prev.deployedAt ?? new Date().toISOString(),
+    contracts: { ...(prev.contracts ?? {}), ...deployed },
   };
   writeFileSync("deployments.testnet.json", JSON.stringify(out, null, 2) + "\n");
   info("written to deployments.testnet.json");

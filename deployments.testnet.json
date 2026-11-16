@@ -16,6 +16,11 @@
       "address": "0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0",
       "txHash": "0x1120aa567d71893b62d678d0ff637581c2baa3eaf54c212820ce0a30d3227a2c",
       "block": "10047566"
+    },
+    "AgentVault": {
+      "address": "0xe25290a955dfbaa9360d90ddcd2f47c0969b3d08",
+      "txHash": "0x966e2e1f21f98404a4acb3783cb0dc47f9ff649936bd5ff2d0c27fccbf20ecb5",
+      "block": "10188229"
     }
   }
 }
