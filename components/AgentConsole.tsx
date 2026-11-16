@@ -25,8 +25,32 @@ interface Info {
   sealRecipient: { mlkemPublicKey: string; x25519PublicKey: string };
   linkProof?: { pubkey: string; possessionProof: string };
   ownerBills: Bill[];
+  ai?: { ready: boolean; model: string };
   error?: string;
 }
+
+interface Review {
+  decision: "draft_mandate" | "hold" | "refuse";
+  risk: "low" | "medium" | "high";
+  matched_bill_id: string | null;
+  extracted: { vendor: string; amount_qor: string; due: string; reference: string; pay_to: string };
+  flags: { kind: string; detail: string }[];
+  explanation: string;
+  mandate_note: string;
+  max_pay_qor: string;
+}
+
+interface AiResult {
+  review: Review;
+  calls: { tool: string; summary: string }[];
+  model: string;
+}
+
+const DECISION: Record<Review["decision"], string> = {
+  draft_mandate: "Safe to pay: mandate drafted",
+  hold: "Hold: check before paying",
+  refuse: "Refused: do not pay",
+};
 
 interface Step {
   ok: boolean;
@@ -55,7 +79,7 @@ function Steps({ steps }: { steps: Step[] }) {
   );
 }
 
-type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue";
+type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai";
 
 export function AgentConsole() {
   const wallet = useWallet();
@@ -73,6 +97,9 @@ export function AgentConsole() {
   const [maxQor, setMaxQor] = useState("");
   const [hours, setHours] = useState(24);
   const [note, setNote] = useState("Pay the hosting invoice for this month.");
+  const [invoice, setInvoice] = useState("");
+  const [samples, setSamples] = useState<{ id: string; label: string; text: string }[]>([]);
+  const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [mandateSteps, setMandateSteps] = useState<Step[] | null>(null);
   const [rogueSteps, setRogueSteps] = useState<Step[] | null>(null);
   const [linkTx, setLinkTx] = useState<string | null>(null);
@@ -211,6 +238,41 @@ export function AgentConsole() {
       await load();
     });
 
+  const loadSamples = async () => {
+    if (!account) return;
+    const res = await fetch(`/api/agent/analyze?ownerEvm=${account.truth.address.evm}`, { cache: "no-store" });
+    const body = (await res.json()) as { samples?: { id: string; label: string; text: string }[] };
+    setSamples(body.samples ?? []);
+  };
+
+  useEffect(() => {
+    if (account && unpaid.length > 0) void loadSamples();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.truth.address.evm, unpaid.length]);
+
+  const askAi = () =>
+    guard("ai", async () => {
+      if (!signer) return;
+      setAiResult(null);
+      const res = await fetch("/api/agent/analyze", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ owner: signer.address, invoice }),
+      });
+      const body = (await res.json()) as AiResult & { error?: string };
+      if (!res.ok) throw new Error(body.error ?? "The AI could not review this.");
+      setAiResult(body);
+    });
+
+  const useDraft = () => {
+    const r = aiResult?.review;
+    if (!r || r.decision !== "draft_mandate" || !r.matched_bill_id) return;
+    setBillId(r.matched_bill_id);
+    setMaxQor(r.max_pay_qor);
+    if (r.mandate_note) setNote(r.mandate_note.slice(0, 280));
+    document.getElementById("mandate-step")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const rogue = () =>
     guard("rogue", async () => {
       if (!signer) return;
@@ -340,9 +402,88 @@ export function AgentConsole() {
         </div>
       </section>
 
-      <section className="card stack agent-step" data-done={mandateSteps?.some((s) => /^Paid/.test(s.text)) ?? false}>
+      <section className="card stack agent-step" data-done={aiResult?.review.decision === "draft_mandate"}>
+        <div className="row between">
+          <h2>
+            <span className="num">3</span> Let the agent&apos;s AI read the invoice
+          </h2>
+          {info?.ai && <span className={`pill ${info.ai.ready ? "active" : ""}`}>{info.ai.ready ? info.ai.model : "AI offline"}</span>}
+        </div>
+        <p>
+          Paste the invoice you received, an email or a message. The agent&apos;s AI checks it against the chain with its
+          own tools (your unpaid bills, who you have paid before, its own leash) and decides: pay, hold, or refuse.
+          It can be fooled like anyone; the chain cannot. Whatever it decides, it can never pay more than your rule allows.
+        </p>
+        {samples.length > 0 && (
+          <div className="row">
+            <span className="faint">Try one:</span>
+            {samples.map((x) => (
+              <button key={x.id} className="btn ghost small" onClick={() => { setInvoice(x.text); setAiResult(null); }}>
+                {x.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <textarea
+          id="ai-invoice"
+          className="input"
+          rows={7}
+          value={invoice}
+          onChange={(e) => setInvoice(e.target.value)}
+          placeholder="Paste an invoice, an email or a payment request…"
+          spellCheck={false}
+        />
+        <div className="row">
+          <button className="btn accent" disabled={!!busy || invoice.trim().length < 10 || !info?.ai?.ready} onClick={askAi}>
+            {busy === "ai" ? "The AI is checking the chain…" : "Review with the agent's AI"}
+          </button>
+          {!info?.ai?.ready && info && <span className="faint">The AI is not configured on this server yet.</span>}
+        </div>
+        {aiResult && (
+          <div className="ai-result stack" data-decision={aiResult.review.decision}>
+            <div className="row between">
+              <strong className="ai-decision">{DECISION[aiResult.review.decision]}</strong>
+              <span className={`pill risk-${aiResult.review.risk}`}>Risk: {aiResult.review.risk}</span>
+            </div>
+            <p>{aiResult.review.explanation}</p>
+            {aiResult.review.flags.length > 0 && (
+              <ul className="list warn">
+                {aiResult.review.flags.map((f, i) => (
+                  <li key={i}>
+                    <strong>{f.kind.replace(/_/g, " ")}:</strong> {f.detail}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="facts ai-facts">
+              <div className="fact"><div className="k">Vendor</div><div className="v">{aiResult.review.extracted.vendor || "?"}</div></div>
+              <div className="fact"><div className="k">Amount asked</div><div className="v">{aiResult.review.extracted.amount_qor || "?"} QOR</div></div>
+              <div className="fact"><div className="k">Matches bill</div><div className="v">{aiResult.review.matched_bill_id ? `#${aiResult.review.matched_bill_id}` : "None"}</div></div>
+            </div>
+            <details>
+              <summary className="faint">How the AI checked ({aiResult.calls.length} tool calls, {aiResult.model})</summary>
+              <ol className="ai-calls">
+                {aiResult.calls.map((c, i) => (
+                  <li key={i}>
+                    <span className="mono">{c.tool}</span> · {c.summary}
+                  </li>
+                ))}
+              </ol>
+            </details>
+            {aiResult.review.decision === "draft_mandate" && aiResult.review.matched_bill_id && (
+              <div>
+                <button className="btn accent small" onClick={useDraft}>
+                  Use this draft for the mandate
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section id="mandate-step" className="card stack agent-step" data-done={mandateSteps?.some((s) => /^Paid/.test(s.text)) ?? false}>
         <h2>
-          <span className="num">3</span> Give the agent a sealed mandate
+          <span className="num">4</span> Give the agent a sealed mandate
         </h2>
         <p>
           You tell the agent what to pay in a mandate. It is encrypted to the agent with ML-KEM-1024, and you sign its
@@ -395,7 +536,7 @@ export function AgentConsole() {
 
       <section className="card stack agent-step">
         <h2>
-          <span className="num">4</span> Now try to break it
+          <span className="num">5</span> Now try to break it
         </h2>
         <p>
           Suppose the agent&apos;s key is stolen. The thief skips the mandate and signs a payment of almost your whole

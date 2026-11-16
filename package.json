@@ -21,6 +21,7 @@
     "attack": "tsx scripts/attack.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@noble/hashes": "^2.4.0",
     "@qorechain/evm": "^0.14.0",
     "@qorechain/pqc": "^0.2.3",
@@ -33,7 +34,8 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "server-only": "^0.0.1",
-    "viem": "^2.57.19"
+    "viem": "^2.57.19",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@qorechain/qorex-wallet-mock": "^0.1.0",
