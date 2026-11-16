@@ -39,16 +39,20 @@ This is the Q-Day Drill's attacker.
 
 ### A2. Someone steals the agent's key (or the whole agent server)
 
+The agent pays from **AgentVault**, a contract that holds the owner's agent budget. The owner's own account is bound by a spending rule that allows the agent key exactly one call, `AgentVault.payBill`, and at most **1 uqor (0.000001 QOR)** of the account's own balance a day. The chain measures the call's real outflow from the account (since v3.2.2), and a vault payment moves nothing from it, so the agent still works.
+
 | They try | What happens | How we know |
 | --- | --- | --- |
-| Send most of the owner's balance anywhere | Refused by the chain: the spending rule caps each payment at 1 QOR. | **Verified**: refused trying to move 147 QOR |
-| Call any contract other than `Bills.pay` | Refused: the rule lists only `Bills.pay` (contract and selector). | **Verified**: an fUSD `transfer` was refused |
-| Many small payments | Bounded by the daily cap (3 QOR) and the link's expiry (14 days). | Chain rule |
-| Small plain transfers under the cap to their own address | **Allowed.** A key bound by a spending rule may send plain value within its caps; that is the chain's design. Keep caps small; revoke on any doubt. | Documented limit |
+| Send most of the owner's balance anywhere | Refused by the chain: the rule allows 1 uqor. | **Verified**: `per-tx limit 1uqor exceeded` (attack 1 in the drill) |
+| Small plain transfers to their own address | Refused by the chain: even 2 uqor is over the rule. (Before the vault this was our first known limit.) | **Verified**: `scripts/spike-zero-cap.ts` |
+| Approve their own address as a payee, raise the limits, withdraw | Refused by the chain: the rule allows only `payBill`. Even if it did not, the vault accepts these only with the owner's ML-DSA-87 signature, checked by pqcVerify; it never trusts `msg.sender`. | **Verified** (attack 2) and Foundry tests |
+| Post a bill from their own address and pay it with the one allowed call | The chain lets `payBill` through; the vault refuses: `PayeeNotApproved`. Nothing moves. | **Verified** (attack 3) and Foundry tests |
+| Pay approved bills too fast or too large | The vault's per-payment and daily limits, set by the owner's post-quantum signature. | Foundry tests |
+| Call any contract other than the vault | Refused: the rule lists only the vault's `payBill`. | **Verified**: off-list calls refused |
 | Use the agent key on another owner's account | Impossible: each owner has their own derived agent key, and the chain binds a linked key to one account. | **Verified**: the chain refused binding one key to two accounts |
 | Keep acting after the owner notices | The owner revokes the key in one click; it stops at once. | Chain rule; revoke button on the Agent and Account pages |
 
-**Worst case:** the per-payment cap times the number of payments the daily cap allows, until revocation or expiry. With the defaults: 3 QOR a day.
+**Worst case:** a stolen agent key can pay only **real bills from payees the owner approved**, within the vault's daily limit, until revocation or expiry; it cannot redirect a single uqor to itself. The owner can pause the vault or withdraw everything with one post-quantum signature.
 
 ### A3. Someone fools the AI
 
@@ -98,11 +102,12 @@ The agent's AI (OpenAI `gpt-5-mini` on the live site; Claude when configured) re
 - `QorePQC.sol` fails closed: an inactive precompile returns empty data, and the helpers revert instead of reading it as "verified". **Verified** by Foundry tests.
 - `FenestellaReceipts.sol` never trusts `msg.sender` (the classical key on QoreChain's EVM); a record needs an ML-DSA-87 signature by the account's registered key, bound to chain, contract, account and nonce. **Verified** by Foundry tests (replay, wrong key, wrong contract, wrong nonce).
 - `Bills.sol` forwards the exact amount in the same call and never holds a balance; a re-entrant payee gains nothing. **Verified** by Foundry tests, including a fuzz test.
+- `AgentVault.sol` holds each owner's agent budget. Paying needs a real bill to the owner, an approved payee and room under the owner's limits; every admin action (payee, limits, pause, withdraw) needs the owner's ML-DSA-87 signature, bound to chain, contract, owner, nonce and the exact parameters, checked by pqcVerify; withdrawals go only to the owner. Plain transfers into it are refused, so every unit is owed to someone. **Verified** by 21 Foundry tests (replay, cross-action, forged key, inactive precompile, reentrancy, owner isolation, a fuzz test that the vault holds exactly what owners are owed) and live on testnet.
 
 ## Known limits, stated plainly
 
-1. Plain transfers under a spending rule's caps are allowed by the chain. Keep caps small.
-2. A window's cap counts native QOR only; token amounts through a window are not capped, and token approvals outlive the window. Fenestella warns about both.
+1. ~~Plain transfers under a spending rule's caps are allowed by the chain.~~ Closed by AgentVault: the owner's rule is 1 uqor, and the agent pays only through the vault. An approved payee could still be paid real bills within the vault's limits; approve only payees you trust.
+2. A window's cap counts native QOR only; token amounts through a window are not capped, and token approvals outlive the window. Fenestella warns about both. AgentVault caps ERC-20 payments with its own per-token limits.
 3. The agent, relayer and vendor keys are testnet throwaways held by our server. A production deployment would keep them in an HSM or a managed key service.
 4. Abstract accounts (linked keys and spending rules) are on for testnet only; on mainnet they are off by governance.
 5. The QoreX browser extension is mainnet only; testnet signing in this demo uses the Dashboard testnet wallet or the QoreX phone app.

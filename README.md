@@ -116,12 +116,13 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | A forged attestation (signature over a different digest) | **Refused** by `FenestellaReceipts`: `InvalidSignature` | simulated before the write |
 | The dev account's ML-DSA-87 key signs the exact bytes `messageFor()` returns; anyone relays it | Recorded; `isAttested` is true | [0xfa030023…541f](https://fenestella.vercel.app/tx/0xfa030023c46c526dd07eab33be5cda41c3de3e9a5aaced2498dfe084cbd7541f) |
 
-**Contracts on testnet** (21 Foundry tests pass; QoreChain AI audit: score 85, every finding answered in [AUDIT.md](AUDIT.md))
+**Contracts on testnet** (42 Foundry tests pass; QoreChain AI audit: score 85, every finding answered in [AUDIT.md](AUDIT.md))
 
 | Contract | Address | Deployment |
 | --- | --- | --- |
 | `FenestellaReceipts` | `0xc520f7084758a3faafd2d8ffb7432c87787a1acc` | [receipt](https://fenestella.vercel.app/tx/0x18a2e6669225b69c7e193c2777fcb16d33aba6089c48d6e964d7ba367e125c6f) |
 | `Bills` | `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0` | [receipt](https://fenestella.vercel.app/tx/0x1120aa567d71893b62d678d0ff637581c2baa3eaf54c212820ce0a30d3227a2c) |
+| `AgentVault` | `0xe25290a955dfbaa9360d90ddcd2f47c0969b3d08` | [receipt](https://fenestella.vercel.app/tx/0x966e2e1f21f98404a4acb3783cb0dc47f9ff649936bd5ff2d0c27fccbf20ecb5) |
 
 **Accounts this project uses**
 
@@ -152,9 +153,10 @@ It also says what people miss: the window's cap counts native QOR only, a token 
 
 ### The agent and its leash
 - **One key per owner.** The chain binds a linked key to a single account, so the agent derives a separate key for each owner from one master secret. Revoking one owner never touches another.
-- **The leash is a spending rule.** The owner links the agent's key with only the `evm` permission, and a rule that allows only `Bills.pay`, with a per-payment and a daily cap. The agent's calls go through `MsgExecuteEVM`, signed by its key and broadcast by a relayer that pays the fee. The owner's EVM window is never needed and stays shut.
+- **The leash is a spending rule, and the money is in a vault.** The owner links the agent's key with only the `evm` permission and a rule that allows exactly one call, `AgentVault.payBill`, and at most **1 uqor** of the account's own balance. The agent's budget sits in [`AgentVault`](contracts/src/AgentVault.sol): it pays only real bills addressed to the owner, only to payees the owner approved, within per-payment and daily limits. The owner approves payees and sets limits with **ML-DSA-87 signatures that the vault checks with pqcVerify**; nothing there trusts `msg.sender`. Since the chain measures the call's real outflow from the account, and a vault payment moves nothing from it, the agent works under a 1 uqor rule, while a stolen agent key cannot send a single plain transfer. (Proven first with [`scripts/spike-zero-cap.ts`](scripts/spike-zero-cap.ts).)
+- **No window, no keys.** The agent's calls go through `MsgExecuteEVM`, signed by its key and broadcast by a relayer that pays the fee. The owner's EVM window is never needed for payments and stays shut.
 - **Mandates are sealed and signed.** The owner writes the instruction in the browser. It is sealed with QoreSeal (ML-KEM-1024 + X25519, AES-256-GCM) to the agent and to the owner, with the bill's terms as the associated data. The owner then signs a 1 uqor self-send whose memo is `fenestella-mandate:<SHA3-256 of the envelope>`; QoreX shows memos, so no custom message or arbitrary signing is needed. Before paying, the agent checks that anchor (hybrid-signed, from the owner, same fingerprint), opens the envelope against the terms, and checks the bill on chain.
-- **Honest limits.** A key bound by a spending rule may still send small plain transfers within its caps. That is the chain's design; keep the caps small. The agent and relayer keys are testnet throwaways held by the server.
+- **Honest limits.** An approved payee can still be paid real bills within the vault's limits, so approve only payees you trust. Funding the vault and signing its rules happen in the browser with the Dashboard wallet on testnet (QoreX does not sign raw EVM transactions or arbitrary bytes). The agent and relayer keys are testnet throwaways held by the server.
 
 ### The agent's AI
 The agent's brain is a language model ([`lib/agent/ai.ts`](lib/agent/ai.ts)). The live site runs OpenAI `gpt-5-mini`; set `ANTHROPIC_API_KEY` instead and the same tools and checks run on Claude (`claude-opus-5-5`). It does two jobs, and neither can widen the leash:
@@ -175,7 +177,8 @@ QoreX through `@qorechain/qorex-types`, Keplr-family wallets with the chain desc
 ### Contracts
 - [`QorePQC.sol`](contracts/src/QorePQC.sol): fail-closed access to the `pqcKeyStatus` (`0x…0a02`) and `pqcVerify` (`0x…0a01`) precompiles. An inactive precompile answers with empty data; these helpers revert on it instead of reading it as "verified".
 - [`FenestellaReceipts.sol`](contracts/src/FenestellaReceipts.sol): records a digest only with an ML-DSA-87 signature by the key the chain registered for the account. It never trusts `msg.sender`, which on QoreChain's EVM is the classical key.
-- [`Bills.sol`](contracts/src/Bills.sol): the one contract the agent may call. Paying forwards the exact amount; it holds nothing.
+- [`AgentVault.sol`](contracts/src/AgentVault.sol): the agent's budget. Pays only real bills to approved payees within limits; payees, limits, pause and withdrawal need the owner's ML-DSA-87 signature checked by pqcVerify; withdrawals go only to the owner. QOR and ERC-20.
+- [`Bills.sol`](contracts/src/Bills.sol): the first agent's contract (before the vault), still on the drill list. Paying forwards the exact amount; it holds nothing.
 
 ## Run it yourself
 
@@ -186,7 +189,7 @@ npm install
 npm run dev        # http://localhost:3000
 npm test           # 57 unit tests
 npx playwright test  # end-to-end, against the live testnet, no wallet needed
-cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 21 contract tests
+cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 42 contract tests
 ```
 
 Testnet scripts use throwaway keys in `.keys/` (git-ignored). The first run prints an address to fund from the [faucet](https://dashboard.qorechain.io/faucet).
