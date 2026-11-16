@@ -100,6 +100,7 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 
 | Step | Result | Receipt |
 | --- | --- | --- |
+| **`requestWindow()` end to end**, live site, real Dashboard wallet (16 November 2026): the [demo dApp](https://fenestella.vercel.app/demo) asks for 3 transactions, 0.5 QOR, ~10 minutes, one contract (testnet fUSD); the owner approves in the popup | Granted exactly that; the chain reads back 3 txs, 0.5 QOR, one target | [BED3BCC1…0D8C](https://fenestella.vercel.app/tx/BED3BCC1C24AE90E92B81C287CB8C721345CC38D6B94CFFD77247721084E0D8C) |
 | From the live site with a real wallet: open a plain-transfers window (5 txs, 2 QOR, ~30 min) | Live, `native_only` | [26A809D6…C245](https://fenestella.vercel.app/tx/26A809D636C386B6E4118501072583CEB8FBB41BF349B519BB42660EA606C245) |
 | Close it with the console's button | Closed, account sealed | [9DB6BDF8…E319](https://fenestella.vercel.app/tx/9DB6BDF83758857F3B6F0CEA848A316073D40568613BDE14BE4A5BE4869AE319) |
 | Script: register ML-DSA-87 with proof of possession | Registered | [F31ADD3F…FEA3](https://fenestella.vercel.app/tx/F31ADD3F91E0EE40956C54D3B11D7E6FDB43455F65A8FCC733ED85D18A72FEA3) |

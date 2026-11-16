@@ -83,7 +83,7 @@ The AI can be fooled. The leash can't.
 That's the future I want for AI agents with money: not "trust the model", but "the model physically can't."
 
 4/ Let apps ask
-For builders there's one call, requestWindow(). Your app asks for exactly what it needs, the user sees your real site address and the limits in plain words, and approves in their own wallet. No CLI, no blank cheque.
+For builders there's one call, requestWindow(). Your app asks for exactly what it needs, the user sees your real site address and the limits in plain words, and approves in their own wallet. No CLI, no blank cheque. I tested it live: a demo dApp asked for 3 transactions, 0.5 QOR, 10 minutes, one contract. That's exactly what the chain granted, and nothing wider.
 
 —
 
@@ -98,6 +98,7 @@ Everything in the demo is a real testnet transaction, and every result in the RE
 ✅ the chain refusing an off-list contract call
 ✅ a tampered mandate that won't decrypt
 ✅ windows opened and closed from the live site with a real wallet
+✅ a dApp asking for a window with requestWindow() and getting exactly that
 ✅ a classical key alone refused on transfer, window and EVM send
 
 21 contract tests, 57 unit tests and end-to-end browser tests pass. I ran the contracts through QoreChain's AI auditor: 85/100, and I answered every finding in public. One of them exposed a real weakness in my server, and I fixed it. It finds every wallet in your browser (QoreX, Keplr, MetaMask, OKX, plus the QoreChain Dashboard wallet) and tells you which ones can actually sign. It holds no keys.
