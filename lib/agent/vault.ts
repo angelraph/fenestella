@@ -76,10 +76,10 @@ export function paramsHash(a: VaultAdmin): Hex {
 }
 
 /** The exact bytes the owner's ML-DSA-87 key signs; mirrors AgentVault.messageFor. */
-export function adminMessage(opts: { chainId: number; owner: Hex; nonce: bigint; admin: VaultAdmin }): Hex {
+export function adminMessage(opts: { chainId: number; owner: Hex; nonce: bigint; admin: VaultAdmin; vault?: Hex }): Hex {
   return encodePacked(
     ["bytes", "uint256", "address", "address", "uint256", "bytes32", "bytes32"],
-    [toHexString(DOMAIN), BigInt(opts.chainId), VAULT, opts.owner, opts.nonce, ACTION[opts.admin.action], paramsHash(opts.admin)],
+    [toHexString(DOMAIN), BigInt(opts.chainId), opts.vault ?? VAULT, opts.owner, opts.nonce, ACTION[opts.admin.action], paramsHash(opts.admin)],
   );
 }
 

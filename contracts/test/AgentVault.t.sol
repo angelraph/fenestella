@@ -26,11 +26,22 @@ contract MockToken {
         return true;
     }
 
-    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external virtual returns (bool) {
         require(balanceOf[from] >= amount && allowance[from][msg.sender] >= amount, "allowance");
         allowance[from][msg.sender] -= amount;
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
+        return true;
+    }
+}
+
+/// @dev Keeps 10% of every transfer, like a fee-on-transfer token.
+contract FeeToken is MockToken {
+    function transferFrom(address from, address to, uint256 amount) external override returns (bool) {
+        require(balanceOf[from] >= amount && allowance[from][msg.sender] >= amount, "allowance");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount - amount / 10;
         return true;
     }
 }
@@ -287,6 +298,38 @@ contract AgentVaultTest is Test {
         bytes memory sig = _ownerSig(vault.ACTION_PAYEE(), keccak256(abi.encode(VENDOR, true)));
         vm.expectRevert(abi.encodeWithSelector(QorePQC.PrecompileUnavailable.selector, QorePQC.PQC_VERIFY));
         vault.setPayee(OWNER, VENDOR, true, sig);
+    }
+
+    // ---------------------------------------- QCAI audit, finding 4 (ERC-20 handling)
+
+    function test_a_token_address_with_no_code_is_refused() public {
+        address fake = address(0xFA4E); // an address with no code: a call to it "succeeds" and moves nothing
+        vm.prank(OWNER);
+        vm.expectRevert(abi.encodeWithSelector(AgentVault.NotAToken.selector, fake));
+        vault.depositToken(OWNER, fake, 1000);
+        assertEq(vault.balanceOf(OWNER, fake), 0);
+    }
+
+    function test_a_bill_in_a_token_with_no_code_cannot_be_paid() public {
+        address fake = address(0xFA4E);
+        _approve(VENDOR);
+        _limits(fake, 100, 100);
+        vm.prank(VENDOR);
+        uint256 id = vault.createBill(OWNER, fake, 1, bytes32(0));
+        vm.prank(OWNER);
+        vm.expectRevert(abi.encodeWithSelector(AgentVault.InsufficientBalance.selector, 1, 0));
+        vault.payBill(id);
+    }
+
+    function test_a_fee_on_transfer_token_credits_only_what_arrived() public {
+        FeeToken fee = new FeeToken();
+        fee.mint(OWNER, 1000);
+        vm.startPrank(OWNER);
+        fee.approve(address(vault), 1000);
+        vault.depositToken(OWNER, address(fee), 1000);
+        vm.stopPrank();
+        assertEq(vault.balanceOf(OWNER, address(fee)), 900);
+        assertEq(fee.balanceOf(address(vault)), 900);
     }
 
     // ----------------------------------------------------------- money safety

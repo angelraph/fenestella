@@ -18,9 +18,15 @@
       "block": "10047566"
     },
     "AgentVault": {
+      "address": "0x51fb13cc0513f02cd16e98f9b4a9f233027c2551",
+      "txHash": "0xef8d536b3874de460cf64e871a683e6b7303479cbbef008e3627599db8051541",
+      "block": "10214418"
+    },
+    "AgentVaultV1": {
       "address": "0xe25290a955dfbaa9360d90ddcd2f47c0969b3d08",
       "txHash": "0x966e2e1f21f98404a4acb3783cb0dc47f9ff649936bd5ff2d0c27fccbf20ecb5",
-      "block": "10188229"
+      "block": "10188229",
+      "note": "first AgentVault; replaced after the QCAI audit (ERC-20 handling)"
     }
   }
 }

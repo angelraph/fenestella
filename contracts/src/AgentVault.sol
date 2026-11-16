@@ -6,6 +6,7 @@ import {QorePQC} from "./QorePQC.sol";
 interface IERC20Minimal {
     function transfer(address to, uint256 amount) external returns (bool);
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
 }
 
 /// @title AgentVault
@@ -88,6 +89,7 @@ contract AgentVault {
     error WrongValue();
     error TransferFailed();
     error Reentered();
+    error NotAToken(address token);
 
     modifier nonReentrant() {
         if (_entered) revert Reentered();
@@ -107,12 +109,17 @@ contract AgentVault {
     }
 
     /// @notice Add an ERC-20 (e.g. testnet fUSD) to `owner`'s vault; needs an allowance.
+    /// The owner is credited with what actually arrived, so a token that takes a
+    /// fee on transfer cannot leave the vault owing more than it holds.
     function depositToken(address owner, address token, uint256 amount) external nonReentrant {
         if (owner == address(0) || token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
-        balanceOf[owner][token] += amount;
+        uint256 before = _tokenBalance(token);
         _call(token, abi.encodeCall(IERC20Minimal.transferFrom, (msg.sender, address(this), amount)));
-        emit Deposited(owner, token, msg.sender, amount);
+        uint256 received = _tokenBalance(token) - before;
+        if (received == 0) revert ZeroAmount();
+        balanceOf[owner][token] += received;
+        emit Deposited(owner, token, msg.sender, received);
     }
 
     // --------------------------------------------------------------------- bills
@@ -216,9 +223,18 @@ contract AgentVault {
     }
 
     /// @dev Calls an ERC-20 and accepts both standard (returns true) and old (returns nothing) tokens.
+    /// An address with no code is refused: a call to it would "succeed" without moving anything.
     function _call(address token, bytes memory data) internal {
+        if (token.code.length == 0) revert NotAToken(token);
         (bool ok, bytes memory ret) = token.call(data);
-        if (!ok || (ret.length != 0 && !abi.decode(ret, (bool)))) revert TransferFailed();
+        if (!ok || (ret.length != 0 && (ret.length != 32 || !abi.decode(ret, (bool))))) revert TransferFailed();
+    }
+
+    function _tokenBalance(address token) internal view returns (uint256) {
+        if (token.code.length == 0) revert NotAToken(token);
+        (bool ok, bytes memory ret) = token.staticcall(abi.encodeCall(IERC20Minimal.balanceOf, (address(this))));
+        if (!ok || ret.length < 32) revert NotAToken(token);
+        return abi.decode(ret, (uint256));
     }
 
     /// @dev Plain transfers are refused: money must arrive through deposit(), so it is always credited to an owner.
