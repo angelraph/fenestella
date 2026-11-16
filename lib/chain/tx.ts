@@ -49,7 +49,24 @@ export async function fetchTx(rest: string, hash: string, fetchFn: typeof fetch 
   const body = (await res.json().catch(() => ({}))) as Json;
   const r = body.tx_response as Json | undefined;
   if (!r) return null;
-  const tx = (r.tx ?? body.tx ?? {}) as Json;
+  return parseDelivered(r, (r.tx ?? body.tx ?? {}) as Json, hash);
+}
+
+/**
+ * The newest transactions an account sent (up to `limit`), newest first.
+ * Uses the REST tx search by `message.sender`.
+ */
+export async function listTxsBySender(rest: string, address: string, limit = 50, fetchFn: typeof fetch = fetch): Promise<DeliveredTx[]> {
+  const q = encodeURIComponent(`message.sender='${address}'`);
+  const res = await fetchFn(`${rest.replace(/\/$/, "")}/cosmos/tx/v1beta1/txs?query=${q}&order_by=2&limit=${limit}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`The chain did not list this account's transactions (${res.status}).`);
+  const body = (await res.json().catch(() => ({}))) as Json;
+  const txs = Array.isArray(body.txs) ? (body.txs as Json[]) : [];
+  const responses = Array.isArray(body.tx_responses) ? (body.tx_responses as Json[]) : [];
+  return responses.map((r, i) => parseDelivered(r, (txs[i] ?? r.tx ?? {}) as Json, String(r.txhash ?? "")));
+}
+
+function parseDelivered(r: Json, tx: Json, hash: string): DeliveredTx {
   const txBody = (tx.body ?? {}) as Json;
   const ext = Array.isArray(txBody.extension_options) ? (txBody.extension_options as Json[]) : [];
   const events = parseEvents(r.events);

@@ -7,7 +7,9 @@ import { BaseError, ContractFunctionRevertedError, concat, createPublicClient, c
 import { privateKeyToAccount } from "viem/accounts";
 import deployments from "../../deployments.testnet.json";
 import { readAccount } from "../chain/read";
-import { executionFailures, fetchTx, waitForTx } from "../chain/tx";
+import { executionFailures, fetchTx, listTxsBySender, waitForTx } from "../chain/tx";
+import { fromHex, toBech32 } from "@cosmjs/encoding";
+import { activeAutopays, type Autopay } from "./autopay";
 import { closeWindowMessage, openWindowMessage } from "../messages";
 import { NETWORKS } from "../networks";
 import { LocalSigner } from "../signer/local";
@@ -534,4 +536,121 @@ export async function analyzeInvoice(owner: string, invoice: string) {
     knownVendor: { address: vendor.evmAddress.toLowerCase(), name: TEST_VENDOR_NAME },
     vault: await vaultState(truth.address.evm, vendor.evmAddress),
   });
+}
+
+
+// ---------------------------------------------------------------- autopay
+
+/** The autopay permissions the owner has signed on chain and that are in force now. */
+export async function autopaysOf(owner: string): Promise<Autopay[]> {
+  const txs = await listTxsBySender(net.rest, owner, 100);
+  return activeAutopays(txs, owner, Math.floor(Date.now() / 1000));
+}
+
+export interface AutopayView {
+  payee: string;
+  payeeName: string | null;
+  maxUqor: string;
+  untilUnix: number;
+  tx: string;
+}
+
+export async function autopayState(owner: string): Promise<AutopayView[]> {
+  const { vendor } = await keys();
+  return (await autopaysOf(owner)).map((a) => ({
+    payee: a.payee,
+    payeeName: a.payee === vendor.evmAddress.toLowerCase() ? TEST_VENDOR_NAME : null,
+    maxUqor: a.maxUqor.toString(),
+    untilUnix: a.untilUnix,
+    tx: a.tx,
+  }));
+}
+
+/**
+ * One autopay round for `owner`: every unpaid bill from a payee the owner put
+ * on autopay, oldest first (at most three a round). Each still has to pass the
+ * vault (approved payee, limits, balance) and the agent's AI; autopay only
+ * replaces the per-bill mandate with the standing one the owner signed.
+ */
+export async function runAutopay(owner: string, trigger: "owner" | "schedule"): Promise<Step[]> {
+  const steps: Step[] = [];
+  try {
+    const autopays = await autopaysOf(owner);
+    if (autopays.length === 0) {
+      steps.push({ ok: true, text: "No autopay is on for this account, so the agent did nothing." });
+      return steps;
+    }
+    const truth = await readAccount("testnet", owner);
+    const evm = truth.address.evm.toLowerCase();
+    const bills = (await billsFor(evm)).filter((b) => !b.paid && autopays.some((a) => a.payee === b.payee)).reverse();
+    steps.push({
+      ok: true,
+      text: `${trigger === "schedule" ? "Scheduled round" : "You asked the agent to check now"}. It read ${autopays.length} autopay permission${autopays.length === 1 ? "" : "s"} you signed on chain, and found ${bills.length} unpaid bill${bills.length === 1 ? "" : "s"} from ${autopays.length === 1 ? "that payee" : "those payees"}.`,
+      tx: autopays[0].tx,
+    });
+    const { vendor } = await keys();
+    for (const b of bills.slice(0, 3)) {
+      const a = autopays.find((x) => x.payee === b.payee)!;
+      const amount = BigInt(b.amountUqor);
+      if (amount > a.maxUqor) {
+        steps.push({ ok: false, text: `Bill #${b.id} asks ${uqorToQor(amount)} QOR; your autopay allows at most ${uqorToQor(a.maxUqor)} QOR a bill. Left for you to decide.` });
+        continue;
+      }
+      const why = await vaultRefusal(evm, payBillCalldata(BigInt(b.id)));
+      if (why) {
+        steps.push({ ok: false, text: `Bill #${b.id}: your vault would refuse it (${refusalInWords(why)}). Nothing sent.` });
+        continue;
+      }
+      const vs = await vaultState(evm, b.payee);
+      const history = await billsFor(evm);
+      const verdict = await secondOpinion({
+        note: `Autopay. The owner signed on chain (transaction ${a.tx}) a standing permission to pay ${b.payee} up to ${uqorToQor(a.maxUqor)} QOR per bill until ${new Date(a.untilUnix * 1000).toISOString().slice(0, 10)}.`,
+        billId: b.id,
+        amountQor: uqorToQor(amount),
+        maxQor: uqorToQor(a.maxUqor),
+        payee: b.payee,
+        payeeKnownAs: b.payee === vendor.evmAddress.toLowerCase() ? TEST_VENDOR_NAME : null,
+        paidBeforeToPayee: history.filter((x) => x.paid && x.payee === b.payee).length,
+        capQor: uqorToQor(vs.perPaymentUqor),
+      });
+      if (!verdict.approve) {
+        steps.push({ ok: false, text: `Bill #${b.id}: the agent's AI (${verdict.model}) did not approve it: ${verdict.reason}` });
+        continue;
+      }
+      const r = await relayAgentCall(owner, VAULT, 0n, payBillCalldata(BigInt(b.id)), `fenestella autopay: bill ${b.id}`);
+      steps.push(
+        r.refused
+          ? { ok: false, text: `Bill #${b.id}: the chain refused it: ${r.refused}`, tx: r.tx }
+          : { ok: true, text: `Paid bill #${b.id} (${uqorToQor(amount)} QOR) from your vault. Your autopay allowed it, the vault checked payee and limits, and the AI (${verdict.model}) approved: ${verdict.reason}`, tx: r.tx },
+      );
+    }
+    if (bills.length > 3) steps.push({ ok: true, text: `${bills.length - 3} more bill(s) wait for the next round.` });
+  } catch (err) {
+    steps.push({ ok: false, text: err instanceof Error ? err.message : "Autopay stopped." });
+  }
+  return steps;
+}
+
+/** Every owner with an unpaid bill in the vault, as qor1 addresses (from the BillCreated events). */
+async function ownersWithUnpaidBills(): Promise<string[]> {
+  const head = await publicClient.getBlockNumber();
+  const owners = new Set<string>();
+  for (let from = VAULT_FROM_BLOCK; from <= head; from += LOG_SPAN * 8n) {
+    const spans: [bigint, bigint][] = [];
+    for (let f = from; f <= head && f < from + LOG_SPAN * 8n; f += LOG_SPAN) spans.push([f, f + LOG_SPAN - 1n < head ? f + LOG_SPAN - 1n : head]);
+    const batch = await Promise.all(spans.map(([fromBlock, toBlock]) => publicClient.getLogs({ address: VAULT, event: BILL_CREATED, fromBlock, toBlock })));
+    for (const logs of batch) for (const l of logs) if (l.args.owner) owners.add(l.args.owner.toLowerCase());
+  }
+  return [...owners].map((evm) => toBech32("qor", fromHex(evm.slice(2))));
+}
+
+/** The scheduled round: every owner with unpaid bills, at most ten owners a round. */
+export async function runAutopayAll(): Promise<{ owner: string; steps: Step[] }[]> {
+  const out: { owner: string; steps: Step[] }[] = [];
+  for (const owner of (await ownersWithUnpaidBills()).slice(0, 10)) {
+    const autopays = await autopaysOf(owner).catch(() => []);
+    if (autopays.length === 0) continue;
+    out.push({ owner, steps: await runAutopay(owner, "schedule") });
+  }
+  return out;
 }

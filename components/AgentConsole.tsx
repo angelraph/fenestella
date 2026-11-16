@@ -71,7 +71,15 @@ function Steps({ steps }: { steps: Step[] }) {
   );
 }
 
-type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai" | "move" | "fund" | "rules";
+type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai" | "move" | "fund" | "rules" | "autopay" | "autopay-run";
+
+interface AutopayView {
+  payee: string;
+  payeeName: string | null;
+  maxUqor: string;
+  untilUnix: number;
+  tx: string;
+}
 
 /** The Dashboard / local signer exposes its keys to this tab; QoreX never does. */
 type KeyedSigner = Signer & { evmAddress: string; account: { privateKey: string; pqc: { secretKey: Uint8Array } } };
@@ -99,6 +107,10 @@ export function AgentConsole() {
   const [linkTx, setLinkTx] = useState<string | null>(null);
   const [depositQor, setDepositQor] = useState("1.5");
   const [vaultSteps, setVaultSteps] = useState<Step[] | null>(null);
+  const [autopays, setAutopays] = useState<AutopayView[] | null>(null);
+  const [apMax, setApMax] = useState("1");
+  const [apDays, setApDays] = useState(30);
+  const [autopaySteps, setAutopaySteps] = useState<Step[] | null>(null);
 
   const load = useCallback(async () => {
     if (!signer) return;
@@ -108,6 +120,9 @@ export function AgentConsole() {
     const body = (await res.json()) as Info;
     if (!res.ok) throw new Error(body.error ?? "The agent is unavailable.");
     setInfo(body);
+    const ap = await fetch(`/api/agent/autopay?owner=${signer.address}`, { cache: "no-store" });
+    const apBody = (await ap.json()) as { autopays?: AutopayView[] };
+    setAutopays(apBody.autopays ?? []);
   }, [signer]);
 
   useEffect(() => {
@@ -239,6 +254,37 @@ export function AgentConsole() {
       const body = (await res.json()) as { steps?: Step[]; error?: string };
       if (!res.ok) throw new Error(body.error ?? "The vault did not accept the rules.");
       setVaultSteps((s) => [...(s ?? []), ...(body.steps ?? [])]);
+      await load();
+    });
+
+  const setAutopay = (on: boolean, payee: string) =>
+    guard("autopay", async () => {
+      if (!signer) return;
+      const ap = await import("@/lib/agent/autopay");
+      const memo = on
+        ? ap.autopayOnMemo(payee, qorToUqor(apMax), Math.floor(Date.now() / 1000) + Math.min(apDays, ap.AUTOPAY_MAX_DAYS) * 86400)
+        : ap.autopayOffMemo(payee);
+      const r = await signer.signAndBroadcast([ap.autopayMessage(signer.address)], memo);
+      setAutopaySteps([
+        {
+          ok: true,
+          text: on
+            ? `You signed a standing permission with your post-quantum key: the agent may pay bills from this payee, up to ${apMax} QOR each, for ${apDays} days. It is a memo on a 1 uqor transfer to yourself, so anyone can read it and only you could have written it.`
+            : "You turned autopay off for this payee. The agent reads this from the chain before every round.",
+          tx: r.txHash,
+        },
+      ]);
+      await new Promise((res) => setTimeout(res, 2500));
+      await load();
+    });
+
+  const runAutopayNow = () =>
+    guard("autopay-run", async () => {
+      if (!signer) return;
+      const res = await fetch("/api/agent/autopay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ owner: signer.address }) });
+      const body = (await res.json()) as { steps?: Step[]; error?: string };
+      if (!res.ok) throw new Error(body.error ?? "The agent did not run.");
+      setAutopaySteps(body.steps ?? []);
       await load();
     });
 
@@ -581,9 +627,71 @@ export function AgentConsole() {
         {mandateSteps && <Steps steps={mandateSteps} />}
       </section>
 
+      <section className="card stack agent-step" data-done={(autopays?.length ?? 0) > 0}>
+        <div className="row between">
+          <h2>
+            <span className="num">6</span> Let it pay on its own: autopay
+          </h2>
+          {(autopays?.length ?? 0) > 0 && <span className="pill active">Autopay on</span>}
+        </div>
+        <p>
+          A mandate per bill is safe but slow. Autopay is a standing permission you sign once with your post-quantum key:
+          the agent may pay bills from one payee, up to an amount, until a date. It checks on its own every few hours. Every
+          payment still has to pass your vault (approved payee, your limits) and the agent&apos;s AI. Turning it off is one
+          more signature, and it takes effect on the next round.
+        </p>
+        {autopays && autopays.length > 0 && (
+          <ul className="bill-list">
+            {autopays.map((a) => (
+              <li key={a.payee}>
+                <span>{a.payeeName ?? shortAddress(a.payee)}</span>
+                <span>up to {uqorToQor(a.maxUqor)} QOR a bill</span>
+                <span className="faint">until {unixToDate(String(a.untilUnix))}</span>
+                <a className="mono faint" href={`/tx/${a.tx}`} target="_blank" rel="noreferrer">signed</a>
+                <button className="btn ghost small" disabled={!!busy} onClick={() => setAutopay(false, a.payee)}>
+                  Turn off
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!onVault ? (
+          <p className="faint">Move the agent&apos;s leash onto your vault first (step 1).</p>
+        ) : info && !(autopays ?? []).some((a) => a.payee === info.vendorEvm) ? (
+          <>
+            <div className="fields">
+              <div className="field">
+                <label htmlFor="ap-max">Most per bill (QOR)</label>
+                <input id="ap-max" className="input" inputMode="decimal" value={apMax} onChange={(e) => setApMax(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="ap-days">For (days, at most 90)</label>
+                <input id="ap-days" className="input" type="number" min={1} max={90} value={apDays} onChange={(e) => setApDays(Number(e.target.value))} />
+              </div>
+            </div>
+            <div className="summary">
+              <strong>Autopay:</strong> the agent may pay bills from <strong>Northwind Hosting</strong> (
+              <span className="mono">{shortAddress(info.vendorEvm)}</span>), up to <strong>{apMax} QOR</strong> each,
+              for <strong>{apDays} days</strong>. Your vault&apos;s limits still apply.
+            </div>
+          </>
+        ) : null}
+        <div className="row">
+          {onVault && info && !(autopays ?? []).some((a) => a.payee === info.vendorEvm) && (
+            <button className="btn accent" disabled={!!busy} onClick={() => setAutopay(true, info.vendorEvm)}>
+              {busy === "autopay" ? "Signing…" : "Turn on autopay for Northwind"}
+            </button>
+          )}
+          <button className="btn ghost" disabled={!!busy || !onVault} onClick={runAutopayNow}>
+            {busy === "autopay-run" ? "The agent is checking…" : "Let the agent check now"}
+          </button>
+        </div>
+        {autopaySteps && <Steps steps={autopaySteps} />}
+      </section>
+
       <section className="card stack agent-step">
         <h2>
-          <span className="num">6</span> Now try to break it
+          <span className="num">7</span> Now try to break it
         </h2>
         <p>
           Suppose the agent&apos;s key is stolen. The thief skips the mandate and tries three things: send most of your

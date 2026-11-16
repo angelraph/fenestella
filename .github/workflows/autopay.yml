@@ -1,0 +1,27 @@
+name: Autopay round
+
+# The bill payer's scheduled round. Vercel's own cron runs once a day; this
+# runs it every two hours as well. The route only pays bills the owner put on
+# autopay with a post-quantum-signed permission, that the vault allows and
+# that the agent's AI approves. If the CRON_SECRET repository secret is set,
+# it is sent along (and the route then requires it).
+on:
+  schedule:
+    - cron: "17 */2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  round:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Ask the agent to run its round
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          auth=()
+          if [ -n "$CRON_SECRET" ]; then auth=(-H "Authorization: Bearer $CRON_SECRET"); fi
+          code=$(curl -s -o round.json -w "%{http_code}" -m 300 "${auth[@]}" https://fenestella.vercel.app/api/agent/autopay)
+          echo "HTTP $code"
+          head -c 4000 round.json; echo
+          test "$code" = "200"
