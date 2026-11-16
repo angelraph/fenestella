@@ -45,7 +45,7 @@ function Steps({ steps }: { steps: Step[] }) {
         <li key={i} data-ok={s.ok}>
           <span>{s.text}</span>
           {s.tx && (
-            <a href={`${net.explorer}/tx/${s.tx}`} target="_blank" rel="noreferrer" className="mono">
+            <a href={`/tx/${s.tx}`} target="_blank" rel="noreferrer" className="mono">
               {s.tx.slice(0, 10)}…
             </a>
           )}
@@ -277,7 +277,7 @@ export function AgentConsole() {
                 {busy === "revoke" ? "Revoking…" : "Revoke the agent now"}
               </button>
               {linkTx && (
-                <a className="faint" href={`${net.explorer}/tx/${linkTx}`} target="_blank" rel="noreferrer">
+                <a className="faint" href={`/tx/${linkTx}`} target="_blank" rel="noreferrer">
                   Link transaction
                 </a>
               )}

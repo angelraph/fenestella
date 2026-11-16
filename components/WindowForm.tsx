@@ -266,7 +266,7 @@ export function WindowForm({ truth, onChanged }: { truth: AccountTruth; onChange
         <div className="notice ok" role="status">
           {status.text}{" "}
           {status.txHash && (
-            <a href={`${net.explorer}/tx/${status.txHash}`} target="_blank" rel="noreferrer">
+            <a href={`/tx/${status.txHash}`} target="_blank" rel="noreferrer">
               View transaction
             </a>
           )}

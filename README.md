@@ -2,175 +2,197 @@
 
 **The small window on a QoreChain account.**
 
-A *fenestella* is the small opening cut through a thick wall: wide enough to pass one thing through, not wide enough to walk an army through. On QoreChain that opening is real. A classical (ECDSA) key can only act through the **EVM authorisation window** the account's post-quantum key opened, and the chain enforces its bounds.
+[**▶ Watch the 2:39 demo**](https://youtu.be/4Lzn0d_LcqY) · [**Try it live**](https://fenestella.vercel.app) · [**Fest project page**](https://build.qorechain.io/p/fenestella) · MIT
 
-Fenestella is the console for that opening:
+![Fenestella home](docs/screens/01-home.jpg)
 
-1. **See the truth.** Paste any address. Fenestella reads the chain and answers one question in one sentence: *if this account's classical key leaked right now, what could an attacker still do?*
-2. **Open a fenestella.** Open a window limited to named contracts or to plain transfers, with a transaction count, a spending cap and an expiry. Close it in one click.
-3. **Let apps ask.** `@fenestella/connect` gives any dApp or agent one call, `requestWindow()`, to ask a user for exactly the window it needs. The user sees the caller's origin and the bounds in words, and approves in their own wallet.
+A *fenestella* is the small opening cut through a thick wall: wide enough to pass one thing through, not wide enough to walk an army through.
 
-**[Watch the 2:39 demo](https://youtu.be/4Lzn0d_LcqY)** · **[Try it live](https://fenestella.vercel.app)**
+On QoreChain that opening is real. A stolen classical (ECDSA) key can only act through the **EVM window** that the account's post-quantum ML-DSA-87 key opened, and only within its limits. The chain already enforces that. What nobody could do was **see** it, **narrow** it, or let an **AI agent** work inside it safely. Fenestella is that missing layer:
 
-Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Developer Fest. Category: Post-Quantum AI Agents. Network: `qorechain-diana` (testnet, EVM chain id 9800).
+1. **See the truth.** Paste any address. One sentence answers the only question that matters: *if this account's classical key leaked right now, what could an attacker still do?*
+2. **Open a fenestella.** A window limited to the one contract you need, or to plain transfers, with a count, a cap and an expiry. Close it in one click.
+3. **Put an agent on a leash.** A bill-paying AI agent with its own key, bounded by a spending rule the chain enforces. It takes orders only from mandates that are sealed with ML-KEM-1024 and signed on chain with your post-quantum key.
+4. **Let apps ask.** One call, `requestWindow()`, for any dApp or agent to ask for exactly the window it needs.
 
-> Status: work in progress, built in public during the fest. The [Status](#status) section says exactly what works today and what does not.
+Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Developer Fest · Category: **Post-Quantum AI Agents** · Network: `qorechain-diana` (testnet, EVM chain id 9800).
 
-## Why this exists
+---
 
-QoreChain's account model is its real difference. Every native transaction needs a hybrid secp256k1 + ML-DSA-87 signature. An EVM transaction is admitted only if the sender has a registered ML-DSA-87 key and an open window: up to 17,280 blocks, up to 1,000 transactions, a cap on value plus fees, and optionally a scope (plain transfers only, or at most 16 named recipients).
+## For judges: try it in 3 minutes
 
-The chain ships all of that. The screens for it are missing:
+**1. Read an account (30 seconds, no wallet).** Open the account the demo video was recorded on: [fenestella.vercel.app/account/qor10dsp…70er](https://fenestella.vercel.app/account/qor10dspk3lpz8a9wecpzzjd3vftw5hm9959vk70er?network=testnet). It shows the one-sentence answer, the facts read from the chain, the agent's linked key and its spending rule. Then paste any testnet or mainnet address of your own on the [home page](https://fenestella.vercel.app).
 
-| Gap | Where it stands today |
+**2. Check the proof (1 minute, no wallet).** Every result below opens a receipt page that reads the transaction straight from the testnet. Start with these two:
+- The agent paying a bill from a sealed mandate: [receipt](https://fenestella.vercel.app/tx/7A9F06EE6FA017A934E58A51C61C3FB5F21AD73DF082F27E152C39C48D349D18)
+- The chain refusing a stolen agent key that tried to move 147 QOR: [receipt](https://fenestella.vercel.app/tx/8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042)
+
+**3. Drive it yourself (2 minutes).** You need a testnet account with a little test QOR:
+1. On the [QoreChain Dashboard](https://dashboard.qorechain.io/wallet), switch to **Testnet**, claim from the [faucet](https://dashboard.qorechain.io/faucet), and send any amount once so your post-quantum key is registered.
+2. On Fenestella, press **Connect wallet**, choose **QoreChain Dashboard wallet**, enter your address and the phrase you reveal on the Dashboard (testnet only; it stays in the tab's memory).
+3. Open your account: try **Open a fenestella** with the *One contract* preset, then close it.
+4. Go to [**Agent**](https://fenestella.vercel.app/agent): link the agent, ask the vendor for a bill, send a sealed mandate, then press **Play the stolen agent key**.
+
+QoreX in the browser also works for reading accounts and for windows on mainnet. The QoreX extension has no testnet switch; on testnet use the QoreX phone app (Settings, then *Use testnet (developers)*) or the Dashboard wallet.
+
+---
+
+## The problem
+
+QoreChain's account model is its real difference. Every native transaction needs a hybrid secp256k1 + ML-DSA-87 signature, so a stolen classical key alone moves nothing there. The EVM lane is where classical keys still sign. The chain admits an EVM transaction only through a window the post-quantum key opened: at most 17,280 blocks, 1,000 transactions and a value cap, optionally narrowed to plain transfers or to at most 16 named addresses.
+
+That design is right, and almost nobody could use it:
+
+| What was missing | Before Fenestella |
 | --- | --- |
-| Scoped windows (targets, native-only) | The QoreX window card has duration, count and cap only. Scope needs the CLI or the SDK. |
-| A dApp asking for a window | No request API. Each project tells users to open one by hand. |
-| Knowing your own exposure | No single place shows key, window, scope, linked keys and what they add up to. |
-| Linked keys with spending rules | Live on testnet, no wallet UI yet. |
+| Knowing your exposure | No place showed key, proof of possession, window, scope, linked keys and what they add up to. |
+| The dangerous case | An account with no post-quantum key yet can be taken over: the first key registration is the one transaction the chain accepts with the classical signature alone. Nothing warned about it. |
+| Scoped windows | The QoreX window card has duration, count and cap only. Targets and native-only need the CLI. |
+| A dApp asking for a window | No request API. Projects told users to run `qorechaind` by hand. |
+| Agents | Each project hand-built its own agent cage from CLI scripts and env files. |
 
-Fenestella does not replace QoreX. QoreX holds the keys and signs. Fenestella decides how far they reach and shows it.
+## What it looks like
 
-## What a leaked key can do: how the answer is computed
+| | |
+| --- | --- |
+| ![Four states](docs/screens/02-four-states.jpg) **Every account is in one of four states:** sealed, scoped, wide open, or can be taken over. | ![The answer](docs/screens/03-account-truth.jpg) **The answer, then the facts:** ML-DSA-87 key and proof of possession, key type, window, encryption key, balance. |
+| ![Wallets](docs/screens/04-wallet-picker.jpg) **Every wallet in the browser, honestly labelled.** QoreX signs; Keplr, OKX, MetaMask and others can show your account. | ![Open a window](docs/screens/05-open-a-window.jpg) **Open a fenestella:** presets, one named contract, a count, a cap, an expiry, in plain words. |
+| ![Scoped](docs/screens/06-scoped-answer.jpg) **The answer updates:** a leaked key could now call only that one contract, briefly. | ![Mandate](docs/screens/07-agent-mandate-paid.jpg) **The agent pays from a sealed, signed mandate,** every check shown. |
+| ![Refused](docs/screens/08-stolen-key-refused.jpg) **A stolen agent key tries to drain the account.** The chain refuses. | ![For dApps](docs/screens/09-for-dapps.jpg) **For builders:** one call, `requestWindow()`. |
 
-`lib/exposure.ts` is a pure function from chain state to a plain-language answer. It has five outcomes:
+## Verified on testnet
+
+Each link opens Fenestella's receipt page, which reads the transaction from the testnet REST API and also links the raw JSON. (The QoreChain explorer opens on mainnet; switch it to Testnet at the top before following a hash there.)
+
+**The bill-paying agent, from the live site with a real wallet** (owner `qor1x2fqs3lpczt2yz2q2rvh0mjvft9rse30c5tv07`, the QoreChain Dashboard wallet, 15 November 2026)
+
+| Step | Result | Receipt |
+| --- | --- | --- |
+| Link the agent: spending rule allows only `Bills.pay`, 1 QOR a payment, 3 QOR a day; key permission `evm` only | Linked | [14FF9AE4…4F2A](https://fenestella.vercel.app/tx/14FF9AE4F27B0699E1DF786D3B2E9FD5651BEE17960F053DDDE11803E8474F2A) |
+| Owner anchors the sealed mandate's SHA3-256 in a hybrid-signed self-send | Signed with ML-DSA-87 | [0A67AA9E…4D4C](https://fenestella.vercel.app/tx/0A67AA9E11AD0A993CF24C39C1EDEE5D34585E1D16DAE84D496CFB4702014D4C) |
+| Agent verifies the anchor, opens the envelope, checks bill #3, pays through the relayer | Paid 0.4 QOR, no window open | [7A9F06EE…9D18](https://fenestella.vercel.app/tx/7A9F06EE6FA017A934E58A51C61C3FB5F21AD73DF082F27E152C39C48D349D18) |
+| Stolen agent key signs "send 147 QOR to 0x…dEaD" | **Refused by the chain**: per-tx limit exceeded | [8210C925…A042](https://fenestella.vercel.app/tx/8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042) |
+
+**The agent, from scripts** ([`scripts/spike-agent.ts`](scripts/spike-agent.ts), [`scripts/spike-mandate.ts`](scripts/spike-mandate.ts))
+
+| Step | Result | Receipt |
+| --- | --- | --- |
+| Agent pays bill #0 | Paid, no window on the owner | [171C5726…A82B](https://fenestella.vercel.app/tx/171C5726C1D87ACE882B2A9394556807557737A991EDB44FCDA6BEEA1C41A82B) |
+| Agent tries to send the whole balance | **Refused**: per-tx limit | [10BF9335…8FE4](https://fenestella.vercel.app/tx/10BF93350AAA83F9ACBFE885A8585A4C9EB5D69D7627D8785027BC57937E8FE4) |
+| Agent calls a contract its rule does not list (fUSD `transfer`) | **Refused**: call not listed | [DB059DC5…D6F7](https://fenestella.vercel.app/tx/DB059DC5EA57E83E262BE91576DAB4216EAAC90F2714FCDFFDEC6CF6CB26D6F7) |
+| A mandate whose cap was raised after sealing | **Does not decrypt**: the terms are bound to the seal | (refused off chain, nothing sent) |
+
+**Windows**
+
+| Step | Result | Receipt |
+| --- | --- | --- |
+| From the live site with a real wallet: open a plain-transfers window (5 txs, 2 QOR, ~30 min) | Live, `native_only` | [26A809D6…C245](https://fenestella.vercel.app/tx/26A809D636C386B6E4118501072583CEB8FBB41BF349B519BB42660EA606C245) |
+| Close it with the console's button | Closed, account sealed | [9DB6BDF8…E319](https://fenestella.vercel.app/tx/9DB6BDF83758857F3B6F0CEA848A316073D40568613BDE14BE4A5BE4869AE319) |
+| Script: register ML-DSA-87 with proof of possession | Registered | [F31ADD3F…FEA3](https://fenestella.vercel.app/tx/F31ADD3F91E0EE40956C54D3B11D7E6FDB43455F65A8FCC733ED85D18A72FEA3) |
+| Script: open a window scoped to one contract | Live, 1 target | [E7A6AFC9…1885](https://fenestella.vercel.app/tx/E7A6AFC9434D795C69CECCA639E9B07831E412F4C10D5B02F12E7580E4FD1885) |
+| Script: close it | Closed | [A4681220…D0DF](https://fenestella.vercel.app/tx/A46812203443CB1D87BE987F1165F3177DBEF1B29005E4639DB69CBB778BD0DF) |
+
+**The classical key alone** ([`scripts/attack.ts`](scripts/attack.ts)): a native transfer, an open-window message and an EVM transfer, each signed only with the classical key of a protected account, were all rejected before inclusion (`pqc code 20`, `no open EVM authorisation window`), and the balance did not change. Run `npm run attack` to see it again.
+
+**Contracts on testnet** (20 Foundry tests pass)
+
+| Contract | Address | Deployment |
+| --- | --- | --- |
+| `FenestellaReceipts` | `0xc520f7084758a3faafd2d8ffb7432c87787a1acc` | [receipt](https://fenestella.vercel.app/tx/0x18a2e6669225b69c7e193c2777fcb16d33aba6089c48d6e964d7ba367e125c6f) |
+| `Bills` | `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0` | [receipt](https://fenestella.vercel.app/tx/0x1120aa567d71893b62d678d0ff637581c2baa3eaf54c212820ce0a30d3227a2c) |
+
+**Accounts this project uses**
+
+| Role | Address |
+| --- | --- |
+| Dev, deployer, first agent owner | [`qor18ydtk2rx0wma4csyl9353kj0z29w645daa47z9`](https://fenestella.vercel.app/account/qor18ydtk2rx0wma4csyl9353kj0z29w645daa47z9?network=testnet) |
+| Q-Day Drill account (registered for 18 November) | [`qor1mzv9k3qwhye6cmyqcwnj5alua529zcgfm3klug`](https://fenestella.vercel.app/account/qor1mzv9k3qwhye6cmyqcwnj5alua529zcgfm3klug?network=testnet) |
+| Demo video account | [`qor10dspk3lpz8a9wecpzzjd3vftw5hm9959vk70er`](https://fenestella.vercel.app/account/qor10dspk3lpz8a9wecpzzjd3vftw5hm9959vk70er?network=testnet) |
+| Agent relayer (pays the agent's fees) | [`qor1qwa03dpa0as9kykh5mdqwqrcsf5e22lrt34rrk`](https://fenestella.vercel.app/account/qor1qwa03dpa0as9kykh5mdqwqrcsf5e22lrt34rrk?network=testnet) |
+| Test vendor (posts bills) | [`qor1t8k2lvkpkzcc4527tpve2pznk78nze0ecsg0hp`](https://fenestella.vercel.app/account/qor1t8k2lvkpkzcc4527tpve2pznk78nze0ecsg0hp?network=testnet) |
+
+---
+
+## How it works
+
+### The answer
+[`lib/exposure.ts`](lib/exposure.ts) is a pure function from chain state to a plain-language answer, with five outcomes and 43 unit tests:
 
 | Level | Meaning |
 | --- | --- |
-| **Can be taken over** | No ML-DSA-87 key is registered. The first registration is the one transaction the chain accepts with the classical signature alone, so whoever holds the classical key can register their own and lock the owner out. This is worse than any open window. |
-| **Wide open** | A live window with no scope: any contract, any recipient, up to its bounds. |
-| **Scoped opening** | A live window limited to plain transfers or to named addresses. |
+| **Can be taken over** | No ML-DSA-87 key. Whoever holds the classical key can register theirs first. Ranked worse than any window. |
+| **Wide open** | A live window with no scope: any contract, any recipient. |
+| **Scoped opening** | A live window limited to plain transfers or named addresses. |
 | **Sealed** | Key registered, no live window. The classical key alone moves nothing. |
-| **Not known** | A section the answer depends on could not be read. An unreadable answer is never treated as safe. |
+| **Not known** | Something it depends on could not be read. Never shown as safe. |
 
-It also says what the chain is explicit about and people miss: the window's cap counts native QOR only, so token amounts are not capped; a token approval made through a window outlives it; and a window on a coin-118 account does nothing, because the EVM lane takes Ethereum-style keys only.
+It also says what people miss: the window's cap counts native QOR only, a token approval outlives the window, and a window on a Cosmos-style (coin 118) account does nothing.
 
-## `@fenestella/connect`
+### The agent and its leash
+- **One key per owner.** The chain binds a linked key to a single account, so the agent derives a separate key for each owner from one master secret. Revoking one owner never touches another.
+- **The leash is a spending rule.** The owner links the agent's key with only the `evm` permission, and a rule that allows only `Bills.pay`, with a per-payment and a daily cap. The agent's calls go through `MsgExecuteEVM`, signed by its key and broadcast by a relayer that pays the fee. The owner's EVM window is never needed and stays shut.
+- **Mandates are sealed and signed.** The owner writes the instruction in the browser. It is sealed with QoreSeal (ML-KEM-1024 + X25519, AES-256-GCM) to the agent and to the owner, with the bill's terms as the associated data. The owner then signs a 1 uqor self-send whose memo is `fenestella-mandate:<SHA3-256 of the envelope>`; QoreX shows memos, so no custom message or arbitrary signing is needed. Before paying, the agent checks that anchor (hybrid-signed, from the owner, same fingerprint), opens the envelope against the terms, and checks the bill on chain.
+- **Honest limits.** A key bound by a spending rule may still send small plain transfers within its caps. That is the chain's design; keep the caps small. The agent and relayer keys are testnet throwaways held by the server.
 
-```ts
-import { requestWindow, windowCovers } from "@fenestella/connect";
+### Windows and requests
+- Messages are built with `openEvmWindowMsg` / `closeEvmWindowMsg` from `@qorechain/sdk`. With QoreX the page only supplies messages; the wallet shows, hybrid-signs and broadcasts them.
+- `@fenestella/connect` ([`packages/connect`](packages/connect)) is dependency-free. `requestWindow()` opens an approval popup; the caller's origin comes from the browser, never from the message; the bounds are restated by Fenestella in plain words; and the result is the window as the chain stored it.
 
-const granted = await requestWindow({
-  reason: "Pay this month's invoices from the Bills contract.",
-  allowedTargets: ["0xYourContract"],
-  maxTxs: 10,
-  maxValueUqor: "2000000", // 2 QOR: value plus the maximum fee of each transaction
-  blocks: 1200,
-  network: "testnet",
-});
-// granted.window is what the chain now stores for the account.
-```
+### Wallets
+QoreX through `@qorechain/qorex-types`, Keplr-family wallets with the chain descriptor from `@qorechain/wallet-adapter`, EVM wallets through EIP-6963, and the QoreChain Dashboard testnet wallet through its revealed phrase (kept in tab memory, and refused unless it opens the address you name and its post-quantum key matches the one on chain).
 
-How it stays honest:
+### Contracts
+- [`QorePQC.sol`](contracts/src/QorePQC.sol): fail-closed access to the `pqcKeyStatus` (`0x…0a02`) and `pqcVerify` (`0x…0a01`) precompiles. An inactive precompile answers with empty data; these helpers revert on it instead of reading it as "verified".
+- [`FenestellaReceipts.sol`](contracts/src/FenestellaReceipts.sol): records a digest only with an ML-DSA-87 signature by the key the chain registered for the account. It never trusts `msg.sender`, which on QoreChain's EVM is the classical key.
+- [`Bills.sol`](contracts/src/Bills.sol): the one contract the agent may call. Paying forwards the exact amount; it holds nothing.
 
-- The approval page opens as a popup. The caller's origin is taken from the browser (`event.origin`), never from the message.
-- Each side ignores any message that does not come from the window it opened, at the origin it expects.
-- The request is checked against the chain's bounds before anything is shown. Fenestella restates targets, cap, count and expiry in words; the caller does not choose that text.
-- The result is the window as the chain reports it after the transaction, not what the caller asked for.
-
-The package lives in `packages/connect`. It has no dependencies. It is not on npm yet.
-
-## Contracts
-
-`contracts/` is a Foundry project.
-
-- **`QorePQC.sol`**: fail-closed access to the testnet precompiles `pqcKeyStatus` (`0x…0a02`) and `pqcVerify` (`0x…0a01`). An inactive precompile returns empty data; these helpers revert on it instead of reading it as "verified".
-- **`FenestellaReceipts.sol`**: a public record of what an account's post-quantum key agreed to (a window, an agent mandate). A receipt needs an ML-DSA-87 signature by the key the chain has registered for that account. `msg.sender` is never used for authorisation, because on QoreChain an EVM transaction is signed by the classical key. No owner, no funds, no upgrade path.
-- **`Bills.sol`**: the one contract the reference agent may call. Paying a bill forwards the exact amount to the payee in the same call; the contract never holds a balance.
-
-One thing to be clear about: **a QoreX user cannot produce a raw ML-DSA-87 signature over arbitrary bytes today** (QoreX refuses `signArbitrary`). So the `pqcVerify` path of `FenestellaReceipts` is for signers that hold their own ML-DSA key (scripts, services, the SDK). For a QoreX user the attestation is the hybrid-signed native transaction itself.
-
-## Run it
+## Run it yourself
 
 Requires Node.js 22 or newer.
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # unit tests
-npm run typecheck
+npm test           # 43 unit tests
+cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 20 contract tests
 ```
 
-Contracts (requires [Foundry](https://getfoundry.sh)):
+Testnet scripts use throwaway keys in `.keys/` (git-ignored). The first run prints an address to fund from the [faucet](https://dashboard.qorechain.io/faucet).
 
 ```bash
-cd contracts
-forge install foundry-rs/forge-std --no-git
-forge test
+npm run spike                      # register the key, open a scoped window, read it back, close it
+npm run attack                     # everything the classical key alone can try
+npx tsx scripts/spike-agent.ts     # link an agent, pay a bill, try to break the leash
+npx tsx scripts/spike-mandate.ts   # sealed mandate end to end (needs npm run dev)
+npx tsx scripts/drill.ts status    # the Q-Day Drill account
 ```
 
-Testnet scripts. They use a throwaway key in `.keys/` (git-ignored) or `FENESTELLA_MNEMONIC`. Testnet only; never use a phrase that guards real funds.
+To run the agent on your own server, set `FENESTELLA_AGENT_KEY`, `FENESTELLA_RELAYER_MNEMONIC` and `FENESTELLA_VENDOR_MNEMONIC` (testnet only).
 
-```bash
-npm run spike      # register the ML-DSA-87 key, open a scoped window, read it back, close it
-npm run attack     # try everything the classical key alone can do; every attempt must be refused
-npx tsx scripts/deploy.ts        # deploy both contracts (after `forge build`)
-npx tsx scripts/drill.ts status  # the Q-Day Drill account: setup | proof | status
-```
-
-The first `npm run spike` prints a new address and stops. Fund it from the [faucet](https://dashboard.qorechain.io/faucet) and run it again.
-
-## How it is put together
+## Repository map
 
 ```
-app/                 Next.js console: /, /account/[address], /request (approval page), /demo
-app/api/account      Server-side chain read (the chain's REST API sends no CORS headers)
-lib/chain/read.ts    Reads one account; every section fails on its own into `unknown`
-lib/exposure.ts      Chain state -> what a leaked classical key can do
-lib/signer/          QoreX signer (wallet signs) and a testnet-only local signer (scripts, development)
-lib/messages.ts      MsgOpenEVMWindow / MsgCloseEVMWindow via the QoreChain SDK
-packages/connect/    @fenestella/connect: spec checks, postMessage protocol, requestWindow()
+app/                 Next.js pages: console, /account/[address], /agent, /tx/[hash] receipts, /request, /demo, /docs, /faq, /security
+app/api/             account reads, and the agent: /api/agent, /bill, /run, /rogue
+lib/exposure.ts      chain state -> what a leaked classical key can do
+lib/agent/           leash (rule, link, execute), mandate (seal, anchor, verify), server (the agent service)
+lib/signer/          QoreX signer, local / Dashboard signer (testnet only)
+lib/wallets/         wallet detection
+packages/connect/    @fenestella/connect: requestWindow()
 contracts/           Foundry: QorePQC, FenestellaReceipts, Bills, tests
-scripts/             spike-window.ts, attack.ts
-tests/               vitest
+scripts/             spikes, attack, deploy, drill, accounts
+video/               how the demo video was made: script, voice, recorder, editor
 ```
-
-Fenestella never holds a key. With QoreX, the page sends messages and the wallet builds, shows, hybrid-signs and broadcasts the transaction. The local signer keeps a testnet phrase in the tab's memory only and refuses mainnet.
-
-## Status
-
-Checked on 14 November 2026, on `qorechain-diana`.
-
-Works, and verified:
-
-- Reading any account on testnet and mainnet, and the exposure answer (43 unit tests).
-- The window lifecycle with the local signer (`npm run spike`): ML-DSA-87 registration with proof of possession, a window scoped to one contract opened, read back and closed.
-- The attacker (`npm run attack`): with only the classical key of a protected account, a native transfer, an open-window message and an EVM transfer were all refused by the chain, and the balance did not change.
-- The contracts: 20 Foundry tests pass. Both are deployed (see [deployments.testnet.json](deployments.testnet.json)):
-  - `FenestellaReceipts`: `0xc520f7084758a3faafd2d8ffb7432c87787a1acc`
-  - `Bills`: `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0`
-- From the live site with a real wallet (the QoreChain Dashboard testnet wallet, connected through the wallet picker): a plain-transfers window (5 transactions, 2 QOR, about 30 minutes) was opened on `qor1x2fqs3lpczt2yz2q2rvh0mjvft9rse30c5tv07`, read back from the chain, then closed with the console's button. Open: `26A809D636C386B6E4118501072583CEB8FBB41BF349B519BB42660EA606C245`. Close: `9DB6BDF83758857F3B6F0CEA848A316073D40568613BDE14BE4A5BE4869AE319`.
-- **The bill-paying agent, live from the site with a real wallet** (`/agent`, owner `qor1x2fqs3lpczt2yz2q2rvh0mjvft9rse30c5tv07`, 15 November 2026):
-  - Linked the owner's own agent key `0xb56d3Fa1FF61FD3067Cb84B8Aab0faA2c7fb3196` with the `evm` permission and a rule allowing only `Bills.pay`, 1 QOR a payment, 3 QOR a day: `14FF9AE4F27B0699E1DF786D3B2E9FD5651BEE17960F053DDDE11803E8474F2A`.
-  - Sealed a mandate in the browser (ML-KEM-1024 + X25519, to the agent and the owner) and anchored its SHA3-256 in a hybrid-signed self-send: `0A67AA9E11AD0A993CF24C39C1EDEE5D34585E1D16DAE84D496CFB4702014D4C`.
-  - The agent checked the anchor, opened the envelope, checked bill #3 on chain and paid it through the relayer: `7A9F06EE6FA017A934E58A51C61C3FB5F21AD73DF082F27E152C39C48D349D18`.
-  - A stolen agent key trying to send 147 QOR was refused by the chain ("per-tx limit 1000000uqor exceeded"): `8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042`.
-  - The owner's account had no EVM window open throughout. A linked key acts through `MsgExecuteEVM`, which the window does not gate; the spending rule is the leash.
-- In scripts: a mandate with its cap raised after sealing does not open (`scripts/spike-mandate.ts`), and a call by the agent to a contract the rule does not list is refused (`scripts/spike-agent.ts`, `DB059DC5EA57E83E262BE91576DAB4216EAAC90F2714FCDFFDEC6CF6CB26D6F7`).
-- The wallet picker finds QoreX, Keplr, Leap, Cosmostation and EIP-6963 wallets (checked in Chrome with QoreX, Keplr, OKX Wallet, HOT Wallet and MetaMask installed).
-- The live `pqcKeyStatus` precompile answers in the shape `QorePQC.sol` expects (2,752 bytes for a registered account, 160 for an unregistered one).
-
-Testnet accounts this project uses:
-
-- Deployer and development account: `qor18ydtk2rx0wma4csyl9353kj0z29w645daa47z9`
-- Q-Day Drill account: `qor1mzv9k3qwhye6cmyqcwnj5alua529zcgfm3klug`
-
-Not verified yet:
-
-- **Signing a window through QoreX on testnet.** The QoreX browser extension runs on mainnet and has no testnet switch; it reached the signing step and refused only because of the network, which Fenestella now explains. The testnet check has to be done in the QoreX phone app with Settings > Use testnet (developers).
-- **The popup flow of `requestWindow()`** in a real browser.
-- **`pqcVerify` on chain.** `FenestellaReceipts.attest` is tested against a mock; no receipt has been written on testnet yet.
-
-What the leash does not stop, by the chain's own design: a key bound by a spending rule may still send plain value to any address within the rule's caps. Here that is at most 1 QOR a payment and 3 QOR a day. Keep the caps small.
 
 ## Kits and credits
 
-- [`@qorechain/sdk`](https://www.npmjs.com/package/@qorechain/sdk) and [`@qorechain/evm`](https://www.npmjs.com/package/@qorechain/evm): network presets, address encodings, window messages, hybrid signing for the local signer.
+- [`@qorechain/sdk`](https://www.npmjs.com/package/@qorechain/sdk): window messages, abstract-account messages, authenticator linking and execution, hybrid signing for scripts.
 - [`@qorechain/qorex-types`](https://www.npmjs.com/package/@qorechain/qorex-types): QoreX detection and `signAndBroadcast`.
-- [`@qorechain/qoreseal`](https://www.npmjs.com/package/@qorechain/qoreseal), [`@qorechain/qoresign`](https://www.npmjs.com/package/@qorechain/qoresign), [`@qorechain/pqc`](https://www.npmjs.com/package/@qorechain/pqc), [`@qorechain/qorex-wallet-mock`](https://www.npmjs.com/package/@qorechain/qorex-wallet-mock): installed for the mandate and end-to-end test work that follows; not used by shipped code yet.
-- Next.js, React, viem, vitest, Foundry.
+- [`@qorechain/qoreseal`](https://www.npmjs.com/package/@qorechain/qoreseal): sealing and opening mandates.
+- [`@qorechain/wallet-adapter`](https://www.npmjs.com/package/@qorechain/wallet-adapter): the chain descriptor for Keplr-family wallets.
+- Next.js, React, viem, vitest, Foundry, Playwright and ffmpeg (video), Microsoft Edge neural voice "Andrew" (narration).
 
-How AI was used in building this is logged in [AI_USAGE.md](AI_USAGE.md).
+How AI was used to build this is logged in [AI_USAGE.md](AI_USAGE.md).
 
 ## Licence
 
