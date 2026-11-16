@@ -183,7 +183,8 @@ export function AgentConsole() {
             selector: info.paySelector,
             perTxUqor: 1n,
             dailyUqor: 1n,
-            expiryUnix: Math.floor(Date.now() / 1000) + days * 86400,
+            // The chain caps a linked key's lifetime at 30 days (720 h).
+            expiryUnix: Math.floor(Date.now() / 1000) + Math.min(Math.max(days, 1), 30) * 86400 - 300,
           },
         }),
       ];
@@ -478,8 +479,8 @@ export function AgentConsole() {
           <>
             <div className="fields">
               <div className="field">
-                <label htmlFor="a-days">Link expires after (days)</label>
-                <input id="a-days" className="input" type="number" min={1} max={90} value={days} onChange={(e) => setDays(Number(e.target.value))} />
+                <label htmlFor="a-days">Link expires after (days, at most 30)</label>
+                <input id="a-days" className="input" type="number" min={1} max={30} value={days} onChange={(e) => setDays(Math.min(30, Number(e.target.value)))} />
               </div>
             </div>
             <div className="summary">

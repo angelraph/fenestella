@@ -27,6 +27,11 @@
       "txHash": "0x966e2e1f21f98404a4acb3783cb0dc47f9ff649936bd5ff2d0c27fccbf20ecb5",
       "block": "10188229",
       "note": "first AgentVault; replaced after the QCAI audit (ERC-20 handling)"
+    },
+    "AgentReports": {
+      "address": "0x2b8d4cdcdc7a2efbcfca7691b58605dc1bc91462",
+      "txHash": "0x0c1fdf0e66e8d3c1518c315cab66aff58e5746b8fe573f305b3f56ca38f40976",
+      "block": "10217733"
     }
   }
 }
