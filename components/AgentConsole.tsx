@@ -5,6 +5,7 @@ import { fetchAccount, type AccountAnswer } from "@/lib/client";
 import { qorToUqor, shortAddress, unixToDate, uqorToQor } from "@/lib/format";
 import { NETWORKS } from "@/lib/networks";
 import type { Signer } from "@/lib/signer/types";
+import { AgentInbox } from "./AgentInbox";
 import { AiReview, type Review } from "./AiReview";
 import { ConnectPanel, useWallet } from "./Wallet";
 
@@ -71,7 +72,7 @@ function Steps({ steps }: { steps: Step[] }) {
   );
 }
 
-type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai" | "move" | "fund" | "rules" | "autopay" | "autopay-run";
+type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai" | "move" | "fund" | "rules" | "autopay" | "autopay-run" | "policy";
 
 interface AutopayView {
   payee: string;
@@ -111,6 +112,9 @@ export function AgentConsole() {
   const [apMax, setApMax] = useState("1");
   const [apDays, setApDays] = useState(30);
   const [autopaySteps, setAutopaySteps] = useState<Step[] | null>(null);
+  const [policyText, setPolicyText] = useState("Pay Northwind Hosting, at most 1 QOR a bill and 3 QOR a day. Pay their bills automatically for the next 30 days, up to 0.5 QOR each.");
+  const [policy, setPolicy] = useState<{ model: string; summary: string; proposal: { payees: { name: string; address: string }[]; perPaymentQor: string; perDayQor: string; autopay: { payee: string; payeeName: string; maxQor: string; days: number } | null; notes: string[] } } | null>(null);
+  const [extraPayees, setExtraPayees] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     if (!signer) return;
@@ -235,6 +239,28 @@ export function AgentConsole() {
       await load();
     });
 
+  const draftRules = () =>
+    guard("policy", async () => {
+      if (!signer) return;
+      setPolicy(null);
+      const res = await fetch("/api/agent/policy", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ owner: signer.address, text: policyText }) });
+      const body = (await res.json()) as typeof policy & { error?: string };
+      if (!res.ok || !body) throw new Error(body?.error ?? "The AI could not draft rules.");
+      setPolicy(body);
+    });
+
+  const usePolicy = () => {
+    if (!policy || !info) return;
+    const p = policy.proposal;
+    if (p.perPaymentQor) setPerTx(p.perPaymentQor);
+    if (p.perDayQor) setDaily(p.perDayQor);
+    setExtraPayees(p.payees.map((x) => x.address).filter((a) => a !== info.vendorEvm));
+    if (p.autopay) {
+      setApMax(p.autopay.maxQor);
+      setApDays(p.autopay.days);
+    }
+  };
+
   const signRules = () =>
     guard("rules", async () => {
       const k = keyed(signer);
@@ -243,6 +269,7 @@ export function AgentConsole() {
       const QOR = 1_000_000_000_000n;
       const admins: import("@/lib/agent/vault").VaultAdmin[] = [];
       if (!info.vaultState.vendorApproved) admins.push({ action: "payee", payee: info.vendorEvm as `0x${string}`, approved: true });
+      for (const extra of extraPayees.slice(0, 2)) admins.push({ action: "payee", payee: extra as `0x${string}`, approved: true });
       admins.push({ action: "limits", token: vault.NATIVE, perPayment: qorToUqor(perTx) * QOR, perDay: qorToUqor(daily) * QOR });
       const nonce = BigInt(info.vaultState.nonce);
       const items = admins.map((admin, i) => ({
@@ -495,6 +522,44 @@ export function AgentConsole() {
           </p>
         ) : (
           <>
+            <div className="policy-box stack">
+              <label htmlFor="v-policy">
+                <strong>Or just say it.</strong> <span className="faint">The agent&apos;s AI turns your words into these rules; Fenestella checks them; you sign.</span>
+              </label>
+              <textarea id="v-policy" className="input" rows={3} value={policyText} onChange={(e) => setPolicyText(e.target.value)} />
+              <div className="row">
+                <button className="btn ghost small" disabled={!!busy || policyText.trim().length < 8 || !info?.ai?.ready} onClick={draftRules}>
+                  {busy === "policy" ? "The AI is reading…" : "Let the AI write my rules"}
+                </button>
+              </div>
+              {policy && (
+                <div className="ai-result stack" data-decision="draft_mandate">
+                  <p>
+                    <strong>The AI understood:</strong> {policy.summary} <span className="faint">({policy.model})</span>
+                  </p>
+                  <div className="facts ai-facts">
+                    <div className="fact"><div className="k">Payees</div><div className="v">{policy.proposal.payees.map((x) => x.name).join(", ") || "None"}</div></div>
+                    <div className="fact"><div className="k">Limits</div><div className="v">{policy.proposal.perPaymentQor || "?"} a payment, {policy.proposal.perDayQor || "?"} a day</div></div>
+                    <div className="fact"><div className="k">Autopay</div><div className="v">{policy.proposal.autopay ? `${policy.proposal.autopay.payeeName}, up to ${policy.proposal.autopay.maxQor}, ${policy.proposal.autopay.days} days` : "Off"}</div></div>
+                  </div>
+                  {policy.proposal.notes.length > 0 && (
+                    <div className="notice ai-guard">
+                      <strong>Fenestella&apos;s checks:</strong>
+                      <ul className="list">
+                        {policy.proposal.notes.map((n, i) => (
+                          <li key={i}>{n}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div>
+                    <button className="btn accent small" onClick={usePolicy}>
+                      Use these rules (you still sign them below)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="fields">
               <div className="field">
                 <label htmlFor="v-dep">Put in the vault (QOR)</label>
@@ -691,7 +756,22 @@ export function AgentConsole() {
 
       <section className="card stack agent-step">
         <h2>
-          <span className="num">7</span> Now try to break it
+          <span className="num">7</span> Messages from your agent
+        </h2>
+        <p>
+          After every payment the agent writes you a report: what it paid, to whom, on what authority, and why its AI
+          agreed. It signs the report with its own on-chain post-quantum identity and seals it to your published
+          encryption key, so only you can read it and you can prove who wrote it. Your sealed mandates go one way, these
+          reports come back the other.
+        </p>
+        {account && (
+          <AgentInbox signer={signer} ownerEvm={account.truth.address.evm} kemPublished={account.truth.kem.found} onChange={() => void load()} />
+        )}
+      </section>
+
+      <section className="card stack agent-step">
+        <h2>
+          <span className="num">8</span> Now try to break it
         </h2>
         <p>
           Suppose the agent&apos;s key is stolen. The thief skips the mandate and tries three things: send most of your

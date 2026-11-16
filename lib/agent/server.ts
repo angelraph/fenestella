@@ -10,6 +10,7 @@ import { readAccount } from "../chain/read";
 import { executionFailures, fetchTx, listTxsBySender, waitForTx } from "../chain/tx";
 import { fromHex, toBech32 } from "@cosmjs/encoding";
 import { activeAutopays, type Autopay } from "./autopay";
+import { postReport, type AgentReport } from "./reports";
 import { closeWindowMessage, openWindowMessage } from "../messages";
 import { NETWORKS } from "../networks";
 import { LocalSigner } from "../signer/local";
@@ -393,6 +394,7 @@ async function relayAgentCall(owner: string, to: Hex, valueUqor: bigint, data: H
 /** Run one mandate: authenticate it, open it, check the bill, pay. Every step is reported. */
 export async function runMandate(input: { envelope: string; anchorTx: string; terms: MandateTerms }): Promise<Step[]> {
   const steps: Step[] = [];
+  let lastVerdict: { model: string; reason: string } | null = null;
   const { agentKey } = await keys();
   const t = input.terms;
   try {
@@ -438,6 +440,7 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
         steps.push({ ok: false, text: `The agent's AI (${verdict.model}) did not approve the payment: ${verdict.reason}` });
         return steps;
       }
+      lastVerdict = verdict;
       steps.push({ ok: true, text: `The agent's AI (${verdict.model}) gave its second opinion and approved: ${verdict.reason}` });
     }
 
@@ -446,6 +449,14 @@ export async function runMandate(input: { envelope: string; anchorTx: string; te
       steps.push({ ok: false, text: `The chain refused the payment: ${r.refused}`, tx: r.tx });
     } else {
       steps.push({ ok: true, text: "Paid from your vault. The relayer broadcast the agent's signed call and paid the fee; the chain checked the call against your spending rule, and the vault checked the payee and your limits.", tx: r.tx });
+      steps.push(
+        await reportStep(owner.address.evm.toLowerCase(), {
+          v: 1, kind: "payment", owner: m.owner, billId: m.billId, payee: m.payee.toLowerCase(),
+          payeeName: m.payee.toLowerCase() === (await keys()).vendor.evmAddress.toLowerCase() ? TEST_VENDOR_NAME : null,
+          amountUqor: amountUqor.toString(), tx: r.tx, basis: { kind: "mandate", tx: input.anchorTx },
+          ai: { model: lastVerdict?.model ?? "", reason: lastVerdict?.reason ?? "" }, at: new Date().toISOString(),
+        }),
+      );
     }
   } catch (err) {
     steps.push({ ok: false, text: err instanceof Error ? err.message : "The agent stopped." });
@@ -623,6 +634,16 @@ export async function runAutopay(owner: string, trigger: "owner" | "schedule"): 
           ? { ok: false, text: `Bill #${b.id}: the chain refused it: ${r.refused}`, tx: r.tx }
           : { ok: true, text: `Paid bill #${b.id} (${uqorToQor(amount)} QOR) from your vault. Your autopay allowed it, the vault checked payee and limits, and the AI (${verdict.model}) approved: ${verdict.reason}`, tx: r.tx },
       );
+      if (!r.refused) {
+        steps.push(
+          await reportStep(evm, {
+            v: 1, kind: "payment", owner, billId: b.id, payee: b.payee,
+            payeeName: b.payee === vendor.evmAddress.toLowerCase() ? TEST_VENDOR_NAME : null,
+            amountUqor: amount.toString(), tx: r.tx, basis: { kind: "autopay", tx: a.tx },
+            ai: { model: verdict.model, reason: verdict.reason }, at: new Date().toISOString(),
+          }),
+        );
+      }
     }
     if (bills.length > 3) steps.push({ ok: true, text: `${bills.length - 3} more bill(s) wait for the next round.` });
   } catch (err) {
@@ -654,3 +675,18 @@ export async function runAutopayAll(): Promise<{ owner: string; steps: Step[] }[
   }
   return out;
 }
+
+/** Sign, seal and post the owner a report about a payment. Never throws; returns a step. */
+async function reportStep(ownerEvm: string, report: AgentReport): Promise<Step> {
+  try {
+    const { agentKey, relayer } = await keys();
+    const r = await postReport(agentKey, relayer, ownerEvm, report);
+    if (!r) return { ok: true, text: "No report sent: publish your encryption key (step 2) and the agent will send you a sealed, signed report after every payment." };
+    return { ok: true, text: `Sent you a report: signed by the agent's on-chain identity (ML-DSA-87) and sealed to your encryption key (ML-KEM-1024). Only you can open it.`, tx: r.tx };
+  } catch (err) {
+    return { ok: false, text: `The payment stands, but the report could not be sent: ${err instanceof Error ? err.message.slice(0, 160) : "error"}.` };
+  }
+}
+
+/** Internals the attack lab reuses. Server only. */
+export const labInternals = { keys, relayAgentCall, vaultRefusal, postBillAs, agentSealKeys, publicClient };

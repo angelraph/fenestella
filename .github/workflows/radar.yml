@@ -1,0 +1,44 @@
+name: Q-Day radar scan
+
+# Scans every account on QoreChain testnet and mainnet with Fenestella's own
+# classifier and publishes only the totals (no addresses) to the radar-data
+# branch, which the /radar page reads.
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Scan both networks
+        run: npx tsx scripts/radar-scan.ts out testnet mainnet
+      - name: Publish the totals to the radar-data branch
+        run: |
+          git config user.name "fenestella-radar"
+          git config user.email "fenestella-radar@users.noreply.github.com"
+          git fetch origin radar-data || true
+          if git show-ref --quiet refs/remotes/origin/radar-data; then
+            git worktree add data origin/radar-data
+            git -C data checkout -B radar-data
+          else
+            git worktree add --detach data
+            git -C data checkout --orphan radar-data
+            git -C data rm -rf . > /dev/null
+          fi
+          mkdir -p data/radar
+          cp out/radar/*.json data/radar/
+          git -C data add radar
+          git -C data commit -m "radar: scan $(date -u +%Y-%m-%dT%H:%MZ)" || echo "no change"
+          git -C data push origin radar-data
