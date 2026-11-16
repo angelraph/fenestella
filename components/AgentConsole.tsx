@@ -5,7 +5,11 @@ import { fetchAccount, type AccountAnswer } from "@/lib/client";
 import { qorToUqor, shortAddress, unixToDate, uqorToQor } from "@/lib/format";
 import { NETWORKS } from "@/lib/networks";
 import type { Signer } from "@/lib/signer/types";
+import { AiReview, type Review } from "./AiReview";
 import { ConnectPanel, useWallet } from "./Wallet";
+
+/** The account the demo video was recorded on; the AI can read for it without a wallet. */
+const DEMO_OWNER = "qor10dspk3lpz8a9wecpzzjd3vftw5hm9959vk70er";
 
 interface Bill {
   id: string;
@@ -28,31 +32,6 @@ interface Info {
   ai?: { ready: boolean; model: string };
   error?: string;
 }
-
-interface Review {
-  decision: "draft_mandate" | "hold" | "refuse";
-  risk: "low" | "medium" | "high";
-  matched_bill_id: string | null;
-  extracted: { vendor: string; amount_qor: string; due: string; reference: string; pay_to: string };
-  flags: { kind: string; detail: string }[];
-  explanation: string;
-  mandate_note: string;
-  max_pay_qor: string;
-}
-
-interface AiResult {
-  review: Review;
-  /** Corrections Fenestella's own rules made to the AI's answer. */
-  guard?: string[];
-  calls: { tool: string; summary: string }[];
-  model: string;
-}
-
-const DECISION: Record<Review["decision"], string> = {
-  draft_mandate: "Safe to pay: mandate drafted",
-  hold: "Hold: check before paying",
-  refuse: "Refused: do not pay",
-};
 
 interface Step {
   ok: boolean;
@@ -99,9 +78,7 @@ export function AgentConsole() {
   const [maxQor, setMaxQor] = useState("");
   const [hours, setHours] = useState(24);
   const [note, setNote] = useState("Pay the hosting invoice for this month.");
-  const [invoice, setInvoice] = useState("");
-  const [samples, setSamples] = useState<{ id: string; label: string; text: string }[]>([]);
-  const [aiResult, setAiResult] = useState<AiResult | null>(null);
+  const [draftUsed, setDraftUsed] = useState(false);
   const [mandateSteps, setMandateSteps] = useState<Step[] | null>(null);
   const [rogueSteps, setRogueSteps] = useState<Step[] | null>(null);
   const [linkTx, setLinkTx] = useState<string | null>(null);
@@ -240,38 +217,12 @@ export function AgentConsole() {
       await load();
     });
 
-  const loadSamples = async () => {
-    if (!account) return;
-    const res = await fetch(`/api/agent/analyze?ownerEvm=${account.truth.address.evm}`, { cache: "no-store" });
-    const body = (await res.json()) as { samples?: { id: string; label: string; text: string }[] };
-    setSamples(body.samples ?? []);
-  };
-
-  useEffect(() => {
-    if (account && unpaid.length > 0) void loadSamples();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.truth.address.evm, unpaid.length]);
-
-  const askAi = () =>
-    guard("ai", async () => {
-      if (!signer) return;
-      setAiResult(null);
-      const res = await fetch("/api/agent/analyze", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ owner: signer.address, invoice }),
-      });
-      const body = (await res.json()) as AiResult & { error?: string };
-      if (!res.ok) throw new Error(body.error ?? "The AI could not review this.");
-      setAiResult(body);
-    });
-
-  const useDraft = () => {
-    const r = aiResult?.review;
-    if (!r || r.decision !== "draft_mandate" || !r.matched_bill_id) return;
+  const useDraft = (r: Review) => {
+    if (r.decision !== "draft_mandate" || !r.matched_bill_id) return;
     setBillId(r.matched_bill_id);
     setMaxQor(r.max_pay_qor);
     if (r.mandate_note) setNote(r.mandate_note.slice(0, 280));
+    setDraftUsed(true);
     document.getElementById("mandate-step")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -292,6 +243,7 @@ export function AgentConsole() {
 
   if (!signer) {
     return (
+      <>
       <section className="card stack">
         <h2>Connect the account the agent will pay from</h2>
         <p>
@@ -299,6 +251,8 @@ export function AgentConsole() {
         </p>
         <ConnectPanel network="testnet" />
       </section>
+      <DemoAi />
+      </>
     );
   }
 
@@ -404,7 +358,7 @@ export function AgentConsole() {
         </div>
       </section>
 
-      <section className="card stack agent-step" data-done={aiResult?.review.decision === "draft_mandate"}>
+      <section className="card stack agent-step" data-done={draftUsed}>
         <div className="row between">
           <h2>
             <span className="num">3</span> Let the agent&apos;s AI read the invoice
@@ -416,80 +370,14 @@ export function AgentConsole() {
           own tools (your unpaid bills, who you have paid before, its own leash) and decides: pay, hold, or refuse.
           It can be fooled like anyone; the chain cannot. Whatever it decides, it can never pay more than your rule allows.
         </p>
-        {samples.length > 0 && (
-          <div className="row">
-            <span className="faint">Try one:</span>
-            {samples.map((x) => (
-              <button key={x.id} className="btn ghost small" onClick={() => { setInvoice(x.text); setAiResult(null); }}>
-                {x.label}
-              </button>
-            ))}
-          </div>
-        )}
-        <textarea
-          id="ai-invoice"
-          className="input"
-          rows={7}
-          value={invoice}
-          onChange={(e) => setInvoice(e.target.value)}
-          placeholder="Paste an invoice, an email or a payment request…"
-          spellCheck={false}
-        />
-        <div className="row">
-          <button className="btn accent" disabled={!!busy || invoice.trim().length < 10 || !info?.ai?.ready} onClick={askAi}>
-            {busy === "ai" ? "The AI is checking the chain…" : "Review with the agent's AI"}
-          </button>
-          {!info?.ai?.ready && info && <span className="faint">The AI is not configured on this server yet.</span>}
-        </div>
-        {aiResult && (
-          <div className="ai-result stack" data-decision={aiResult.review.decision}>
-            <div className="row between">
-              <strong className="ai-decision">{DECISION[aiResult.review.decision]}</strong>
-              <span className={`pill risk-${aiResult.review.risk}`}>Risk: {aiResult.review.risk}</span>
-            </div>
-            <p>{aiResult.review.explanation}</p>
-            {aiResult.review.flags.length > 0 && (
-              <ul className="list warn">
-                {aiResult.review.flags.map((f, i) => (
-                  <li key={i}>
-                    <strong>{f.kind.replace(/_/g, " ")}:</strong> {f.detail}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {aiResult.guard && aiResult.guard.length > 0 && (
-              <div className="notice ai-guard">
-                <strong>Fenestella's rules, applied after the AI:</strong>
-                <ul className="list">
-                  {aiResult.guard.map((g, i) => (
-                    <li key={i}>{g}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="facts ai-facts">
-              <div className="fact"><div className="k">Vendor</div><div className="v">{aiResult.review.extracted.vendor || "?"}</div></div>
-              <div className="fact"><div className="k">Amount asked</div><div className="v">{aiResult.review.extracted.amount_qor || "?"} QOR</div></div>
-              <div className="fact"><div className="k">Matches bill</div><div className="v">{aiResult.review.matched_bill_id ? `#${aiResult.review.matched_bill_id}` : "None"}</div></div>
-            </div>
-            <details>
-              <summary className="faint">How the AI checked ({aiResult.calls.length} tool calls, {aiResult.model})</summary>
-              <ol className="ai-calls">
-                {aiResult.calls.map((c, i) => (
-                  <li key={i}>
-                    <span className="mono">{c.tool}</span> · {c.summary}
-                  </li>
-                ))}
-              </ol>
-            </details>
-            {aiResult.review.decision === "draft_mandate" && aiResult.review.matched_bill_id && (
-              <div>
-                <button className="btn accent small" onClick={useDraft}>
-                  Use this draft for the mandate
-                </button>
-              </div>
-            )}
-          </div>
+        {account && (
+          <AiReview
+            owner={signer.address}
+            ownerEvm={account.truth.address.evm}
+            ai={info?.ai ?? null}
+            reloadKey={unpaid.length}
+            onUseDraft={useDraft}
+          />
         )}
       </section>
 
@@ -569,5 +457,35 @@ export function AgentConsole() {
         </p>
       )}
     </div>
+  );
+}
+
+/** For visitors without a wallet: the agent's AI, reading for the demo account. Read-only. */
+function DemoAi() {
+  const [evm, setEvm] = useState<string | null>(null);
+  const [ai, setAi] = useState<{ ready: boolean; model: string } | null>(null);
+  useEffect(() => {
+    fetchAccount("testnet", DEMO_OWNER)
+      .then(async (a) => {
+        setEvm(a.truth.address.evm);
+        const r = await fetch(`/api/agent?owner=${DEMO_OWNER}`, { cache: "no-store" });
+        const b = (await r.json()) as { ai?: { ready: boolean; model: string } };
+        setAi(b.ai ?? null);
+      })
+      .catch(() => undefined);
+  }, []);
+  return (
+    <section className="card stack agent-step" id="try-the-ai">
+      <div className="row between">
+        <h2>No wallet? Watch the agent&apos;s AI catch a scam</h2>
+        {ai && <span className={`pill ${ai.ready ? "active" : ""}`}>{ai.ready ? ai.model : "AI offline"}</span>}
+      </div>
+      <p>
+        The AI reads invoices for <a href={`/account/${DEMO_OWNER}?network=testnet`}>the demo account</a>, which has the
+        agent linked and a real unpaid bill on chain. Pick the phishing or the prompt-injection sample and watch it check
+        the chain with its tools and refuse. This only reads; nothing is signed or paid.
+      </p>
+      {evm ? <AiReview owner={DEMO_OWNER} ownerEvm={evm} ai={ai} /> : <p className="faint">Reading the demo account…</p>}
+    </section>
   );
 }

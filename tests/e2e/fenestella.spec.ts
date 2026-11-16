@@ -25,4 +25,8 @@ test("the agent page shows its AI and its leash steps", async ({ page }) => {
   await page.goto("/agent");
   await expect(page.locator("h1")).toContainText("An AI agent that can pay your bills");
   await expect(page.getByText("Connect the account the agent will pay from")).toBeVisible();
+  // Without a wallet, the AI panel reads for the demo account and offers the three sample invoices.
+  await expect(page.getByRole("heading", { name: /No wallet\? Watch the agent's AI/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Phishing: new address, urgent" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Prompt injection" })).toBeVisible();
 });
