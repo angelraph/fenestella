@@ -1,0 +1,40 @@
+{
+  "network": "testnet",
+  "chainId": "qorechain-diana",
+  "scannedAt": "2026-11-16T21:52:06.560Z",
+  "durationMs": 577589,
+  "accounts": 15980,
+  "notExposedYet": 13702,
+  "exposed": 2278,
+  "scanned": 2278,
+  "levels": {
+    "sealed": 1812,
+    "scoped": 2,
+    "open": 5,
+    "takeover": 459,
+    "unknown": 0
+  },
+  "pqcRegistered": 1819,
+  "possessionProven": 462,
+  "kemKeys": 52,
+  "liveWindows": 7,
+  "agentAccounts": 23,
+  "failed": 0,
+  "valueAtRiskUqor": "4305830196",
+  "valueBehindOpenWindowsUqor": "380654076",
+  "valueSealedUqor": "5931815689765541",
+  "history": [
+    {
+      "at": "2026-11-16T21:52:06.560Z",
+      "exposed": 2278,
+      "levels": {
+        "sealed": 1812,
+        "scoped": 2,
+        "open": 5,
+        "takeover": 459,
+        "unknown": 0
+      },
+      "valueAtRiskUqor": "4305830196"
+    }
+  ]
+}
