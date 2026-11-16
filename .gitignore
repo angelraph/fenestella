@@ -17,3 +17,4 @@ video/build/
 fenestella-demo.mp4
 test-results/
 playwright-report/
+packages/connect/dist/
