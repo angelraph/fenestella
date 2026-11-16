@@ -497,7 +497,7 @@ export const TEST_VENDOR_NAME = "Northwind Hosting";
  */
 export async function sampleInvoices(ownerEvm: string): Promise<{ id: string; label: string; text: string }[]> {
   const { vendor } = await keys();
-  const bill = (await billsFor(ownerEvm)).find((b) => !b.paid);
+  const bill = (await billsFor(ownerEvm)).find((b) => !b.paid && b.payee === vendor.evmAddress.toLowerCase());
   const amount = bill ? uqorToQor(bill.amountUqor) : "0.4";
   const ref = bill ? `NW-2026-${bill.id.padStart(4, "0")}` : "NW-2026-0000";
   const today = new Date().toISOString().slice(0, 10);
