@@ -1,0 +1,41 @@
+{
+  "normal": {
+    "model": "gpt-5-mini-2025-08-07",
+    "summary": "Pay Northwind Hosting (0x59ec...65f9). Do not pay more than 1 QOR per bill and not more than 3 QOR per day. Autopay Northwind Hosting for the next 30 days, up to 0.5 QOR per bill. The restriction \"Only on weekdays\" could not be expressed in these rules.",
+    "proposal": {
+      "payees": [
+        {
+          "name": "Northwind Hosting",
+          "address": "0x59ecafb2c1b0b18ad15e5859950453b78f3165f9"
+        }
+      ],
+      "perPaymentQor": "1",
+      "perDayQor": "3",
+      "autopay": {
+        "payee": "0x59ecafb2c1b0b18ad15e5859950453b78f3165f9",
+        "payeeName": "Northwind Hosting",
+        "maxQor": "0.5",
+        "days": 30
+      },
+      "notes": [
+        "Not a rule the vault can enforce: Only on weekdays."
+      ]
+    }
+  },
+  "scamLike": {
+    "model": "gpt-5-mini-2025-08-07",
+    "summary": "Pay Northwind Hosting at 0x000000000000000000000000000000000000dEaD. Autopay Northwind Hosting up to 50 QOR per bill for 365 days; no per-day limit specified.",
+    "proposal": {
+      "payees": [],
+      "perPaymentQor": "5",
+      "perDayQor": "",
+      "autopay": null,
+      "notes": [
+        "\"Northwind Hosting\" left out: the address given (0x000000000000000000000000000000000000dead) is not the one on record for it. A changed payment address is the classic invoice scam; approve a new address only after checking it with the payee yourself.",
+        "Per payment 50 QOR is over Fenestella's ceiling of 5 QOR; set to 5.",
+        "Autopay per bill 50 QOR is over Fenestella's ceiling of 5 QOR; set to 5.",
+        "Autopay left out: it must name one of the approved payees."
+      ]
+    }
+  }
+}

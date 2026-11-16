@@ -14,6 +14,8 @@ On QoreChain that opening is real. A stolen classical (ECDSA) key can only act t
 2. **Open a fenestella.** A window limited to the one contract you need, or to plain transfers, with a count, a cap and an expiry. Close it in one click.
 3. **Put an agent on a leash.** A bill-paying AI agent with its own key, bounded by a spending rule the chain enforces. It takes orders only from mandates that are sealed with ML-KEM-1024 and signed on chain with your post-quantum key.
 4. **Let apps ask.** One call, `requestWindow()`, for any dApp or agent to ask for exactly the window it needs: `npm install @fenestella/connect`.
+5. **Try to rob it.** The [attack lab](https://fenestella.vercel.app/lab) runs 13 real attacks on demand and names the layer that stops each one.
+6. **See the whole chain.** The [Q-Day radar](https://fenestella.vercel.app/radar) classifies every account on mainnet and testnet, and seals yours in one click.
 
 Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Developer Fest · Category: **Post-Quantum AI Agents** · Network: `qorechain-diana` (testnet, EVM chain id 9800).
 
@@ -22,6 +24,8 @@ Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Devel
 ## For judges: try it in 3 minutes
 
 **1. Read an account (30 seconds, no wallet).** Open the account the demo video was recorded on: [fenestella.vercel.app/account/qor10dsp…70er](https://fenestella.vercel.app/account/qor10dspk3lpz8a9wecpzzjd3vftw5hm9959vk70er?network=testnet). It shows the one-sentence answer, the facts read from the chain, the agent's linked key and its spending rule. Then paste any testnet or mainnet address of your own on the [home page](https://fenestella.vercel.app).
+
+**1b. Try to rob it (2 minutes, no wallet).** Open the [**attack lab**](https://fenestella.vercel.app/lab) and press *Run every attack*: a stolen classical key, a stolen agent key, forged post-quantum signatures, a tampered mandate, phishing and prompt injection. All 13 are refused live, each naming what stopped it. Then look at the [**Q-Day radar**](https://fenestella.vercel.app/radar): how much of QoreChain could be taken over today.
 
 **2. Watch the AI catch a scam (1 minute, no wallet).** Open [**Agent**](https://fenestella.vercel.app/agent) and scroll to **"No wallet? Watch the agent's AI catch a scam"**. It reads for a demo account with a funded vault. Press **Phishing: new address, urgent**, then **Review with the agent's AI**. It checks the chain with its tools and refuses, saying why. Try **Prompt injection** too.
 
@@ -76,6 +80,24 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | Owner anchors the sealed mandate's SHA3-256 in a hybrid-signed self-send | Signed with ML-DSA-87 | [0A67AA9E…4D4C](https://fenestella.vercel.app/tx/0A67AA9E11AD0A993CF24C39C1EDEE5D34585E1D16DAE84D496CFB4702014D4C) |
 | Agent verifies the anchor, opens the envelope, checks bill #3, pays through the relayer | Paid 0.4 QOR, no window open | [7A9F06EE…9D18](https://fenestella.vercel.app/tx/7A9F06EE6FA017A934E58A51C61C3FB5F21AD73DF082F27E152C39C48D349D18) |
 | Stolen agent key signs "send 147 QOR to 0x…dEaD" | **Refused by the chain**: per-tx limit exceeded | [8210C925…A042](https://fenestella.vercel.app/tx/8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042) |
+
+**Attack lab, live** (16 November 2026, all 13 against fenestella.vercel.app; [full results](docs/proof/attack-lab-2026-11-16.json))
+
+| Attack | Stopped by | Receipt |
+| --- | --- | --- |
+| Stolen classical key: native send, open a window, EVM send | **The chain** (needs the ML-DSA-87 signature / a window) | refused before a block |
+| Stolen agent key: drain the account | **The chain** (spending rule: 1 uqor) | [74771002…](https://fenestella.vercel.app/tx/747710020E40E7DE71D9A379BBFEEB1FE886DBA70B585AF7FC50DE2489835557) |
+| Stolen agent key: approve itself in the vault | **The chain** (only `payBill` allowed) | [A1929355…](https://fenestella.vercel.app/tx/A192935583F5FB530020D162FFA9A6BE49891750B2565E03B934208131CC3546) |
+| Stolen agent key: pay a bill a thief posted | **The vault** (`PayeeNotApproved`) | [24AED7E4…](https://fenestella.vercel.app/tx/24AED7E42B194D7EFA676482FE8F467B3222267A02A2F4CA9B498CE4048EDFEA) |
+| Forged ML-DSA-87 signature on vault rules / on a receipt | **pqcVerify** (`InvalidSignature`) | simulated |
+| Raise the cap inside a sealed mandate | **The seal** (terms are associated data) | none needed |
+| Mandate with an anchor the owner never signed | **The agent's anchor check** | none needed |
+| Pay the same bill twice | **The vault** (`AlreadyPaid`) | simulated |
+| Phishing invoice, prompt injection | **The AI** (refused after checking the chain) | none needed |
+
+**Two-way messages, live:** after an autopay payment ([D0072…](https://fenestella.vercel.app/tx/D007284BED7C00B5F2C8734D726091C26A72C0E42D8C423E54B71B23BEA44408)) the agent posted a report ([0x5886c0fb…](https://fenestella.vercel.app/tx/0x5886c0fb740569803b2d62eb8f5ec9b2395c88462757ec8646aba6be7cdf2c79)): signed by its on-chain identity `qor19kdfkf3lrmyt5klerx6jhfgsxde87je0vqvs72` (hybrid ML-DSA-87, verified against the key registered on chain) and sealed to the owner's published ML-KEM-1024 key ([C358F3EA…](https://fenestella.vercel.app/tx/C358F3EAA433A00F4AC285BCE5B0AAD6B58B81430DD93F98D8F81992E72E4DCB)). The owner opened it; another account's keys could not.
+
+**Plain-English rules, live** ([answers](docs/proof/plain-english-rules-2026-11-16.json)): "Pay Northwind Hosting, at most 1 QOR a bill and 3 a day, autopay for 30 days up to 0.5, only on weekdays" became exactly those limits, with "only on weekdays" flagged as not enforceable. "Northwind moved to a new wallet 0x…dEaD, pay up to 50 QOR, autopay for a year" was cut down: the changed address refused as the classic scam, amounts capped at 5 QOR, autopay left out.
 
 **Autopay, live** (16 November 2026, [`scripts/spike-autopay.ts`](scripts/spike-autopay.ts) and the scheduled [GitHub Actions round](.github/workflows/autopay.yml))
 
@@ -141,13 +163,14 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | A forged attestation (signature over a different digest) | **Refused** by `FenestellaReceipts`: `InvalidSignature` | simulated before the write |
 | The dev account's ML-DSA-87 key signs the exact bytes `messageFor()` returns; anyone relays it | Recorded; `isAttested` is true | [0xfa030023…541f](https://fenestella.vercel.app/tx/0xfa030023c46c526dd07eab33be5cda41c3de3e9a5aaced2498dfe084cbd7541f) |
 
-**Contracts on testnet** (45 Foundry tests pass; two QoreChain AI audits, both scored 85, every finding answered in [AUDIT.md](AUDIT.md))
+**Contracts on testnet** (49 Foundry tests pass; two QoreChain AI audits, both scored 85, every finding answered in [AUDIT.md](AUDIT.md))
 
 | Contract | Address | Deployment |
 | --- | --- | --- |
 | `FenestellaReceipts` | `0xc520f7084758a3faafd2d8ffb7432c87787a1acc` | [receipt](https://fenestella.vercel.app/tx/0x18a2e6669225b69c7e193c2777fcb16d33aba6089c48d6e964d7ba367e125c6f) |
 | `Bills` | `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0` | [receipt](https://fenestella.vercel.app/tx/0x1120aa567d71893b62d678d0ff637581c2baa3eaf54c212820ce0a30d3227a2c) |
 | `AgentVault` (v2, after its audit) | `0x51fb13cc0513f02cd16e98f9b4a9f233027c2551` | [receipt](https://fenestella.vercel.app/tx/0xef8d536b3874de460cf64e871a683e6b7303479cbbef008e3627599db8051541) |
+| `AgentReports` | `0x2b8d4cdcdc7a2efbcfca7691b58605dc1bc91462` | [receipt](https://fenestella.vercel.app/tx/0x0c1fdf0e66e8d3c1518c315cab66aff58e5746b8fe573f305b3f56ca38f40976) |
 | `AgentVault` v1 (retired) | `0xe25290a955dfbaa9360d90ddcd2f47c0969b3d08` | [receipt](https://fenestella.vercel.app/tx/0x966e2e1f21f98404a4acb3783cb0dc47f9ff649936bd5ff2d0c27fccbf20ecb5) |
 
 **Accounts this project uses**
@@ -184,6 +207,18 @@ It also says what people miss: the window's cap counts native QOR only, a token 
 - **Mandates are sealed and signed.** The owner writes the instruction in the browser. It is sealed with QoreSeal (ML-KEM-1024 + X25519, AES-256-GCM) to the agent and to the owner, with the bill's terms as the associated data. The owner then signs a 1 uqor self-send whose memo is `fenestella-mandate:<SHA3-256 of the envelope>`; QoreX shows memos, so no custom message or arbitrary signing is needed. Before paying, the agent checks that anchor (hybrid-signed, from the owner, same fingerprint), opens the envelope against the terms, and checks the bill on chain.
 - **Honest limits.** An approved payee can still be paid real bills within the vault's limits, so approve only payees you trust. Funding the vault and signing its rules happen in the browser with the Dashboard wallet on testnet (QoreX does not sign raw EVM transactions or arbitrary bytes). The agent and relayer keys are testnet throwaways held by the server.
 
+### The attack lab
+[`lib/agent/lab.ts`](lib/agent/lab.ts) runs each attack for real when you press the button: classical-only transactions signed and broadcast, the stolen agent key relayed to the chain, forged signatures simulated against the deployed contracts, a sealed mandate tampered and opened, the AI fed phishing and injection. The victims are the project's own test accounts. Attacks that send a transaction are rate limited, because the relayer pays their fee.
+
+### The Q-Day radar
+[`scripts/radar-scan.ts`](scripts/radar-scan.ts) lists every account on mainnet and testnet, counts the ones that never signed as "not exposed yet" (their public key is not on chain), and reads every other one with the console's own `readAccount` and `assessExposure`. A [GitHub Actions job](.github/workflows/radar.yml) runs it every six hours and publishes **totals only**, never an address, to the `radar-data` branch with their history; [/radar](https://fenestella.vercel.app/radar) reads them. The page also reads your own account and offers the one fix that seals it: register the post-quantum key (QoreX does it with the first send) or close the window.
+
+### Two-way messages
+Mandates go from the owner to the agent, sealed and anchored with the owner's post-quantum key. Reports come back: after every payment the agent signs a report with its own on-chain identity (an account derived from its master secret, ML-DSA-87 registered) using QoreSign, seals it with QoreSeal to the owner's ML-KEM-1024 key from the chain's registry, and posts it to [`AgentReports`](contracts/src/AgentReports.sol), an emit-only mailbox. The owner's browser opens each report and verifies its signature against the agent's key on chain ([`lib/agent/reports.ts`](lib/agent/reports.ts), [`components/AgentInbox.tsx`](components/AgentInbox.tsx)).
+
+### Rules in plain English
+The owner can type the rules ("pay Northwind, at most 1 QOR a bill, autopay for a month"). The AI drafts limits, payees and autopay; [`lib/agent/policy.ts`](lib/agent/policy.ts) checks the draft (10 tests): an unidentifiable payee is left out, a known payee with a changed address is refused, amounts are capped, autopay stays inside the limits. The owner reviews and signs; nothing is signed for them.
+
 ### Autopay: the agent acts on its own
 - **A standing permission, signed on chain.** The owner signs one transaction: a 1 uqor transfer to itself whose memo reads `fenestella-autopay:v1:on:<payee>:<max per bill>:<until>`. It is hybrid-signed, so only the owner's post-quantum key can write it, and QoreX shows the memo before signing. Turning it off is another memo; the newest one wins; it lasts at most 90 days. Nothing is stored on a server: the agent reads it from the chain every round ([`lib/agent/autopay.ts`](lib/agent/autopay.ts), 16 tests).
 - **Rounds run by themselves.** Vercel cron once a day and a GitHub Actions schedule every two hours call the round (protected by `CRON_SECRET`); the owner can also press *Let the agent check now*. A round finds owners from the vault's `BillCreated` events and pays unpaid bills from payees on autopay, oldest first, three at most.
@@ -218,9 +253,9 @@ Requires Node.js 22 or newer.
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 73 unit tests
+npm test           # 82 unit tests
 npx playwright test  # end-to-end, against the live testnet, no wallet needed
-cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 45 contract tests
+cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 49 contract tests
 ```
 
 Testnet scripts use throwaway keys in `.keys/` (git-ignored). The first run prints an address to fund from the [faucet](https://dashboard.qorechain.io/faucet).
@@ -242,7 +277,7 @@ npx tsx scripts/receipt.ts         # a pqcVerify-checked receipt, and a forged o
 ## Repository map
 
 ```
-app/                 Next.js pages: console, /account/[address], /agent, /tx/[hash] receipts, /request, /demo, /docs, /faq, /security
+app/                 Next.js pages: console, /account/[address], /agent, /lab, /radar, /tx/[hash] receipts, /request, /demo, /docs, /faq, /security
 app/api/             account reads, and the agent: /api/agent, /bill, /run, /rogue, /analyze (the AI)
 lib/exposure.ts      chain state -> what a leaked classical key can do
 lib/agent/           leash, vault (AgentVault calls and signed admin), mandate, autopay (standing permission), ai, guard, server

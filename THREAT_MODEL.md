@@ -71,6 +71,14 @@ The agent's AI (OpenAI `gpt-5-mini` on the live site; Claude when configured) re
 
 **Design principle:** the AI can say no; it can never make a yes bigger than the owner's on-chain rule.
 
+### A3b. Someone forges or reads the agent's reports
+
+| They try | What happens |
+| --- | --- |
+| Read a report | It is sealed with ML-KEM-1024 to the owner's registered key; another account's keys cannot open it. **Verified live.** |
+| Write a fake report | Reports carry the agent identity's hybrid ML-DSA-87 signature; the owner's browser verifies it against the key registered on chain. **Verified live.** |
+| Use the mailbox to move money | `AgentReports` only emits; it holds and stores nothing and refuses value. |
+
 ### A4. Someone forges or alters a mandate
 
 | They try | What happens | How we know |
