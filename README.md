@@ -101,7 +101,7 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | A forged attestation (signature over a different digest) | **Refused** by `FenestellaReceipts`: `InvalidSignature` | simulated before the write |
 | The dev account's ML-DSA-87 key signs the exact bytes `messageFor()` returns; anyone relays it | Recorded; `isAttested` is true | [0xfa030023…541f](https://fenestella.vercel.app/tx/0xfa030023c46c526dd07eab33be5cda41c3de3e9a5aaced2498dfe084cbd7541f) |
 
-**Contracts on testnet** (20 Foundry tests pass)
+**Contracts on testnet** (21 Foundry tests pass; QoreChain AI audit: score 85, every finding answered in [AUDIT.md](AUDIT.md))
 
 | Contract | Address | Deployment |
 | --- | --- | --- |
@@ -169,7 +169,7 @@ npm install
 npm run dev        # http://localhost:3000
 npm test           # 43 unit tests
 npx playwright test  # end-to-end, against the live testnet, no wallet needed
-cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 20 contract tests
+cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 21 contract tests
 ```
 
 Testnet scripts use throwaway keys in `.keys/` (git-ignored). The first run prints an address to fund from the [faucet](https://dashboard.qorechain.io/faucet).
@@ -213,7 +213,7 @@ video/               how the demo video was made: script, voice, recorder, edito
 - [Claude](https://www.anthropic.com/claude) through [`@anthropic-ai/sdk`](https://www.npmjs.com/package/@anthropic-ai/sdk): the agent's AI (tool runner, structured outputs).
 - Next.js, React, viem, vitest, Foundry, Playwright and ffmpeg (video), Microsoft Edge neural voice "Andrew" (narration).
 
-How AI was used to build this is logged in [AI_USAGE.md](AI_USAGE.md). What Fenestella defends against, and what it does not, is in [THREAT_MODEL.md](THREAT_MODEL.md).
+How AI was used to build this is logged in [AI_USAGE.md](AI_USAGE.md). What Fenestella defends against, and what it does not, is in [THREAT_MODEL.md](THREAT_MODEL.md). The QoreChain AI contract audit and our response to each finding are in [AUDIT.md](AUDIT.md).
 
 ## Licence
 

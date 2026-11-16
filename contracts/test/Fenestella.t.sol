@@ -259,6 +259,40 @@ contract BillsTest is Test {
         assertEq(payer.balance, 9 ether);
     }
 
+    /// QCAI audit, finding 1 ("missing access control on createBill"): anyone may
+    /// post a bill, by design, because a bill is a request and not a debt. This
+    /// pins down why that is safe: an unsolicited bill moves no money, and it
+    /// changes nothing about any other bill.
+    function test_unsolicited_bill_moves_nothing() public {
+        uint256 real = _bill(1 ether);
+        address spammer = address(0x5BA4);
+        vm.deal(spammer, 1 ether);
+        vm.startPrank(spammer);
+        for (uint256 i = 0; i < 50; i++) {
+            bills.createBill(payer, 100 ether, keccak256(abi.encode(i)));
+        }
+        vm.stopPrank();
+
+        // Nobody's balance moved, and the contract still holds nothing.
+        assertEq(payer.balance, 10 ether);
+        assertEq(spammer.balance, 1 ether);
+        assertEq(address(bills).balance, 0);
+
+        // The spammer cannot pay its own bill on the payer's behalf.
+        vm.prank(spammer);
+        vm.expectRevert(abi.encodeWithSelector(Bills.NotThePayer.selector, spammer));
+        bills.pay{value: 1 ether}(real + 1);
+
+        // The real bill is untouched and still payable, whatever came after it.
+        Bills.Bill memory b = bills.billOf(real);
+        assertEq(b.payee, payee);
+        assertEq(b.amount, 1 ether);
+        assertFalse(b.paid);
+        vm.prank(payer);
+        bills.pay{value: 1 ether}(real);
+        assertEq(payee.balance, 1 ether);
+    }
+
     function testFuzz_contract_never_keeps_a_balance(uint96 amount) public {
         vm.assume(amount > 0);
         vm.deal(payer, amount);

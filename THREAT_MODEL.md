@@ -81,6 +81,7 @@ The agent's AI (Claude) reads invoices and gives a second opinion before each pa
 | Trick the user into signing a wide window | The wallet shows the decoded message before signing. Fenestella restates every bound in plain words. A wide window is labelled "the widest choice". |
 | Lie about an account's state | The read is public and repeatable; every proof links a receipt that reads the chain directly. |
 | Abuse the agent's write routes to burn the relayer's fees | Rate limits per owner and per hour; the relayer holds only fee money. |
+| Flood `Bills` with bills to other people so the owner's real bill drops out of view | The agent finds an owner's bills by the indexed `payer` in `BillCreated` events, so other people's bills never enter the scan. (Found by the QoreChain AI audit; see AUDIT.md.) |
 
 ### A6. A malicious dApp uses `requestWindow()`
 
@@ -103,4 +104,4 @@ The agent's AI (Claude) reads invoices and gives a second opinion before each pa
 3. The agent, relayer and vendor keys are testnet throwaways held by our server. A production deployment would keep them in an HSM or a managed key service.
 4. Abstract accounts (linked keys and spending rules) are on for testnet only; on mainnet they are off by governance.
 5. The QoreX browser extension is mainnet only; testnet signing in this demo uses the Dashboard testnet wallet or the QoreX phone app.
-6. Fenestella has not had an external audit.
+6. Fenestella has not had a human external audit. The contracts went through QoreChain's AI auditor (score 85); every finding and what we did about it is in [AUDIT.md](AUDIT.md).

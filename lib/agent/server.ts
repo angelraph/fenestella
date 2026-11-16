@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fetchAuthNonce, resolveEvmAuthDigestVersion } from "@qorechain/sdk";
 import { recipientOf, sealKeysFromSeed } from "@qorechain/qoreseal";
-import { concat, createPublicClient, createWalletClient, http, keccak256, toBytes, type Hex } from "viem";
+import { concat, createPublicClient, createWalletClient, http, keccak256, parseAbiItem, toBytes, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import deployments from "../../deployments.testnet.json";
 import { readAccount } from "../chain/read";
@@ -131,18 +131,51 @@ export interface BillView {
   paid: boolean;
 }
 
+const BILLS_FROM_BLOCK = BigInt(deployments.contracts.Bills.block);
+/** The testnet RPC answers eth_getLogs for at most 10,000 blocks at a time. */
+const LOG_SPAN = 10_000n;
+const BILL_CREATED = parseAbiItem(
+  "event BillCreated(uint256 indexed id, address indexed payee, address indexed payer, uint256 amount, bytes32 memoHash)",
+);
+/** Per payer: the bill ids already found, and the last block scanned. */
+const billIndex = new Map<string, { scannedTo: bigint; ids: Set<bigint> }>();
+
+/**
+ * Every bill addressed to `ownerEvm`, newest first, found through the
+ * `BillCreated` events filtered by the indexed payer. Anyone may post a bill
+ * to anyone, so the list cannot rely on the newest N bills of the contract: a
+ * flood of bills to other people would push the owner's out of view.
+ */
 export async function billsFor(ownerEvm: string): Promise<BillView[]> {
-  const count = await publicClient.readContract({ address: BILLS, abi: BILLS_ABI, functionName: "count" });
-  const out: BillView[] = [];
-  const from = count > 30n ? count - 30n : 0n;
-  for (let i = count - 1n; i >= from && i >= 0n; i--) {
-    const b = await publicClient.readContract({ address: BILLS, abi: BILLS_ABI, functionName: "billOf", args: [i] });
-    if (b.payer.toLowerCase() === ownerEvm.toLowerCase()) {
-      out.push({ id: i.toString(), payee: b.payee.toLowerCase(), payer: b.payer.toLowerCase(), amountUqor: (b.amount / AQOR_PER_UQOR).toString(), paid: b.paid });
-    }
-    if (i === 0n) break;
+  const payer = ownerEvm.toLowerCase() as Hex;
+  const head = await publicClient.getBlockNumber();
+  const known = billIndex.get(payer) ?? { scannedTo: BILLS_FROM_BLOCK - 1n, ids: new Set<bigint>() };
+  const spans: [bigint, bigint][] = [];
+  for (let from = known.scannedTo + 1n; from <= head; from += LOG_SPAN) {
+    spans.push([from, from + LOG_SPAN - 1n < head ? from + LOG_SPAN - 1n : head]);
   }
-  return out;
+  for (let i = 0; i < spans.length; i += 8) {
+    const batch = await Promise.all(
+      spans.slice(i, i + 8).map(([fromBlock, toBlock]) =>
+        publicClient.getLogs({ address: BILLS, event: BILL_CREATED, args: { payer }, fromBlock, toBlock }),
+      ),
+    );
+    for (const logs of batch) for (const l of logs) if (l.args.id !== undefined) known.ids.add(l.args.id);
+  }
+  known.scannedTo = head;
+  billIndex.set(payer, known);
+
+  const ids = [...known.ids].sort((a, b) => (a < b ? 1 : -1));
+  const bills = await Promise.all(
+    ids.map((id) => publicClient.readContract({ address: BILLS, abi: BILLS_ABI, functionName: "billOf", args: [id] })),
+  );
+  return bills.map((b, i) => ({
+    id: ids[i].toString(),
+    payee: b.payee.toLowerCase(),
+    payer: b.payer.toLowerCase(),
+    amountUqor: (b.amount / AQOR_PER_UQOR).toString(),
+    paid: b.paid,
+  }));
 }
 
 /** The test vendor posts a bill payable by `ownerEvm`. */
