@@ -10,6 +10,8 @@ Fenestella is the console for that opening:
 2. **Open a fenestella.** Open a window limited to named contracts or to plain transfers, with a transaction count, a spending cap and an expiry. Close it in one click.
 3. **Let apps ask.** `@fenestella/connect` gives any dApp or agent one call, `requestWindow()`, to ask a user for exactly the window it needs. The user sees the caller's origin and the bounds in words, and approves in their own wallet.
 
+**[Watch the 2:39 demo](https://youtu.be/4Lzn0d_LcqY)** · **[Try it live](https://fenestella.vercel.app)**
+
 Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Developer Fest. Category: Post-Quantum AI Agents. Network: `qorechain-diana` (testnet, EVM chain id 9800).
 
 > Status: work in progress, built in public during the fest. The [Status](#status) section says exactly what works today and what does not.

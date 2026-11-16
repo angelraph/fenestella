@@ -43,6 +43,9 @@ export default function Home() {
         </p>
         <Lookup />
         <p className="faint">Reading an account needs no wallet and no gas. Works on testnet and mainnet.</p>
+        <a className="btn ghost small" href="https://youtu.be/4Lzn0d_LcqY" target="_blank" rel="noreferrer">
+          ▶ Watch the 2:39 demo
+        </a>
       </section>
 
       <section className="section" aria-labelledby="states-h">
