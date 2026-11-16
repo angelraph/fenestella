@@ -23,12 +23,12 @@ interface Result {
 }
 
 const LAYER: Record<Layer, string> = {
-  chain: "The chain",
-  vault: "The vault",
-  contract: "A contract",
-  seal: "The seal (ML-KEM-1024)",
-  signature: "A post-quantum signature check",
-  ai: "The agent's AI",
+  chain: "the chain",
+  vault: "the vault",
+  contract: "a contract",
+  seal: "the seal (ML-KEM-1024)",
+  signature: "a post-quantum signature check",
+  ai: "the agent's AI",
 };
 
 /** Every attack runs live against testnet; nothing here is simulated in the page. */
