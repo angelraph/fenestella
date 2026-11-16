@@ -31,7 +31,10 @@ const DATA = (n: string) => `https://raw.githubusercontent.com/angelraph/feneste
 async function load(n: "testnet" | "mainnet"): Promise<Snapshot | null> {
   try {
     const r = await fetch(DATA(n), { next: { revalidate: 600 } });
-    return r.ok ? ((await r.json()) as Snapshot) : null;
+    if (r.ok) return (await r.json()) as Snapshot;
+    // A miss (for example while GitHub's CDN catches up with a new file) is not cached: ask again, fresh.
+    const fresh = await fetch(DATA(n), { cache: "no-store" });
+    return fresh.ok ? ((await fresh.json()) as Snapshot) : null;
   } catch {
     return null;
   }
