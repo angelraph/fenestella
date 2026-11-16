@@ -83,7 +83,7 @@ async function ensureReportWindow(id: LocalSigner) {
 export async function postReport(master: Hex, funder: LocalSigner, ownerEvm: string, report: AgentReport): Promise<{ tx: string; signer: string } | null> {
   if (!REPORTS) return null;
   const kem = await fetchKemKey({ rest: net.rest, address: report.owner }).catch(() => null);
-  if (!kem || !("found" in kem) || !kem.found) return null;
+  if (!kem?.registered) return null;
   const id = await ensureIdentity(master, funder);
   const body = JSON.stringify(report);
   const signature = signMessage({
