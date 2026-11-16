@@ -1,5 +1,4 @@
 import { SealMyAccount } from "@/components/SealMyAccount";
-import { uqorToQor } from "@/lib/format";
 
 export const metadata = { title: "Q-Day radar · Fenestella" };
 export const revalidate = 600;
@@ -41,7 +40,7 @@ async function load(n: "testnet" | "mainnet"): Promise<Snapshot | null> {
 }
 
 const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)}%` : "0%");
-const qor = (u: string) => Number(uqorToQor(u)).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const qor = (u: string) => (Number(BigInt(u || "0")) / 1e6).toLocaleString("en-US", { maximumFractionDigits: 2 });
 const SEGMENTS: { key: keyof Levels; label: string }[] = [
   { key: "takeover", label: "Can be taken over" },
   { key: "open", label: "Wide open window" },
