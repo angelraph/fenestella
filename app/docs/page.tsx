@@ -21,6 +21,19 @@ try {
   }
 }`;
 
+const MCP = `npx @fenestella/mcp keygen      # prints a new agent key
+
+// claude_desktop_config.json or .mcp.json
+{
+  "mcpServers": {
+    "fenestella": {
+      "command": "npx",
+      "args": ["-y", "@fenestella/mcp"],
+      "env": { "FENESTELLA_AGENT_KEY": "0x…" }
+    }
+  }
+}`;
+
 const COVERS = `import { windowCovers } from "@fenestella/connect";
 
 const res = await fetch(
@@ -123,6 +136,23 @@ export default function DocsPage() {
 
       <h2 id="covers">Skip the request when a window already fits</h2>
       <pre className="cli">{COVERS}</pre>
+
+      <h2 id="mcp">For AI agents: the MCP server</h2>
+      <p>
+        <code>@fenestella/mcp</code> gives Claude, Cursor or any MCP client a QoreChain agent on a leash the chain
+        enforces. Its key, kept on your machine, may call only <code>AgentVault.payBill</code>; the vault pays only
+        payees you approved with your post-quantum key, within your limits. Without a key it reads: what a stolen
+        classical key could do to an account, the Q-Day radar, your vault and bills, and the <code>pqcVerify</code> /{" "}
+        <code>pqcKeyStatus</code> precompiles.
+      </p>
+      <pre className="cli">{MCP}</pre>
+      <p>
+        Tools: <code>check_account</code>, <code>qday_radar</code>, <code>vault_status</code>, <code>list_bills</code>,{" "}
+        <code>request_window</code> (a link you approve in your own wallet), <code>verify_pq_signature</code>,{" "}
+        <code>link_agent</code> and <code>pay_bill</code>. The relayer forwards only a <code>payBill</code> call to the
+        vault and refuses to spend a fee on a bill the vault would refuse.{" "}
+        <a href="https://github.com/angelraph/fenestella/tree/main/packages/mcp">Full guide</a>.
+      </p>
 
       <h2 id="api">Account API</h2>
       <p>

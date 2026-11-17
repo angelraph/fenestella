@@ -1,0 +1,31 @@
+{
+  "name": "@fenestella/mcp",
+  "version": "0.1.0",
+  "description": "Fenestella for AI agents: check what a stolen QoreChain key could do, read the Q-Day radar, and pay bills from an AgentVault on a leash the chain enforces.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "fenestella-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --platform=node --target=node20 --outfile=dist/index.js --packages=external --loader:.json=json",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@fenestella/connect": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@qorechain/evm": "^0.14.0",
+    "@qorechain/sdk": "^0.14.0",
+    "viem": "^2.57.19",
+    "zod": "^4.0.0"
+  },
+  "keywords": ["mcp", "model-context-protocol", "qorechain", "post-quantum", "ai-agent", "ml-dsa", "agent-vault"],
+  "homepage": "https://fenestella.vercel.app/docs#mcp",
+  "repository": { "type": "git", "url": "git+https://github.com/angelraph/fenestella.git", "directory": "packages/mcp" },
+  "bugs": { "url": "https://github.com/angelraph/fenestella/issues" }
+}

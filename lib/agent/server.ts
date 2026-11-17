@@ -689,4 +689,62 @@ async function reportStep(ownerEvm: string, report: AgentReport): Promise<Step> 
 }
 
 /** Internals the attack lab reuses. Server only. */
-export const labInternals = { keys, relayAgentCall, vaultRefusal, postBillAs, agentSealKeys, publicClient };
+/**
+ * Relay a payment signed by an agent the owner runs themself (the Fenestella
+ * MCP server). The relayer only pays the fee: it forwards one thing, a
+ * `payBill` call to the vault with no value, and refuses to spend a fee on a
+ * signature that is not from the named key, a key the owner has not linked,
+ * or a bill the vault would refuse anyway. The chain then checks the key, the
+ * owner's spending rule and the signature again; the vault checks the payee
+ * and the limits.
+ */
+export async function relayOwnAgentPayment(input: {
+  owner: string;
+  agent: Hex;
+  billId: bigint;
+  nonce: bigint;
+  gasLimit: number;
+  digestVersion: "v1" | "v2";
+  signature: Hex;
+}): Promise<{ tx: string | null; refused: string | null; refusedInWords: string | null }> {
+  const { evmAuthSignBytes, evmAuthSignBytesV2, executeEvmMsg } = await import("@qorechain/sdk");
+  const { recoverMessageAddress, hexToBytes, bytesToHex } = await import("viem");
+  const { relayer } = await keys();
+  const owner = await readAccount("testnet", input.owner);
+  const data = payBillCalldata(input.billId);
+  const pubkey = hexToBytes(input.agent);
+  const fields = { chainId: net.chainId, account: owner.address.cosmos, pubkey, to: VAULT, value: "0", data: hexToBytes(data), nonce: input.nonce };
+  const digest = input.digestVersion === "v2" ? evmAuthSignBytesV2({ ...fields, gasLimit: input.gasLimit }) : evmAuthSignBytes(fields);
+  const signer = await recoverMessageAddress({ message: { raw: bytesToHex(digest) }, signature: input.signature });
+  if (signer.toLowerCase() !== input.agent.toLowerCase()) throw new MandateError("The signature is not from the agent key named in the request.");
+
+  const [current, chainDigest] = await Promise.all([
+    fetchAuthNonce({ rest: net.rest, address: owner.address.cosmos, pubkey: input.agent }),
+    resolveEvmAuthDigestVersion({ rest: net.rest }),
+  ]);
+  if (!current.linked) throw new MandateError("The owner has not linked this agent key, or revoked it.");
+  if (current.nonce !== input.nonce) throw new MandateError(`Stale nonce: the chain expects ${current.nonce} for this key.`);
+  if (chainDigest !== input.digestVersion) throw new MandateError(`The chain verifies the ${chainDigest} digest now.`);
+
+  const refusal = await vaultRefusal(owner.address.evm, data);
+  if (refusal) return { tx: null, refused: refusal, refusedInWords: refusalInWords(refusal) };
+
+  const m = executeEvmMsg({
+    relayer: relayer.address,
+    account: owner.address.cosmos,
+    scheme: "secp256k1",
+    pubkey,
+    signature: hexToBytes(input.signature),
+    to: VAULT,
+    value: "0",
+    data: hexToBytes(data),
+    gasLimit: input.gasLimit,
+    nonce: input.nonce,
+  });
+  const sent = await relayer.signAndBroadcast([m as never], `fenestella relay: own agent pays bill ${input.billId}`);
+  const tx = await waitForTx(net.rest, sent.txHash);
+  const failed = executionFailures(tx)[0]?.attributes.reason ?? null;
+  return { tx: sent.txHash, refused: failed, refusedInWords: failed };
+}
+
+export const labInternals ={ keys, relayAgentCall, vaultRefusal, postBillAs, agentSealKeys, publicClient };

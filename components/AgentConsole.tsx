@@ -140,7 +140,21 @@ export function AgentConsole() {
     const hex = info.agent.slice(2).toLowerCase();
     return account.truth.abstractAccount.authenticators.find((a) => a.pubkeyHex.toLowerCase() === hex) ?? null;
   }, [info, account]);
-  const linked = !!agentKey && !agentKey.revoked && BigInt(agentKey.expiryUnix) > BigInt(Math.floor(Date.now() / 1000));
+  // An agent the owner runs themself asks to be linked with ?agent=0x…&proof=0x… (from the MCP server's link_agent tool).
+  const [ownAgent, setOwnAgent] = useState<{ agent: string; proof: string } | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const a = q.get("agent") ?? "";
+    const p = q.get("proof") ?? "";
+    if (/^0x[0-9a-fA-F]{40}$/.test(a) && /^0x[0-9a-fA-F]{130}$/.test(p)) setOwnAgent({ agent: a.toLowerCase(), proof: p });
+  }, []);
+  const ownKey = useMemo(() => {
+    if (!ownAgent || !account) return null;
+    return account.truth.abstractAccount.authenticators.find((a) => a.pubkeyHex.toLowerCase() === ownAgent.agent.slice(2)) ?? null;
+  }, [ownAgent, account]);
+  const ownLinked = !!ownKey && !ownKey.revoked && BigInt(ownKey.expiryUnix) > BigInt(Math.floor(Date.now() / 1000));
+
+  const linked = !!agentKey &&!agentKey.revoked && BigInt(agentKey.expiryUnix) > BigInt(Math.floor(Date.now() / 1000));
   const rule = account?.truth.abstractAccount.rules.find((r) => r.enabled) ?? null;
   const onVault = !!info && !!rule && rule.allowedEvmCalls.some((c) => c.toLowerCase() === `${info.vault}/${info.paySelector}`.toLowerCase());
   const vs = info?.vaultState;
@@ -168,17 +182,20 @@ export function AgentConsole() {
     }
   };
 
-  const link = () =>
+  const link = () => linkKey(info?.linkProof);
+
+  const linkKey = (proof: { pubkey: string; possessionProof: string } | undefined, label?: string) =>
     guard("link", async () => {
-      if (!signer || !info?.linkProof || !account) throw new Error("Connect a wallet that signs first.");
+      if (!signer || !info || !proof || !account) throw new Error("Connect a wallet that signs first.");
       const leash = await import("@/lib/agent/leash");
       const msgs = [
         ...(account.truth.abstractAccount.account ? [] : [leash.createAbstractAccountMessage(signer.address)]),
         ...leash.linkAgentMessagesFromProof({
           owner: signer.address,
           chainId: net.chainId,
-          proof: { pubkey: fromHex(info.linkProof.pubkey), possessionProof: fromHex(info.linkProof.possessionProof) },
+          proof: { pubkey: fromHex(proof.pubkey), possessionProof: fromHex(proof.possessionProof) },
           terms: {
+            label,
             bills: info.vault,
             selector: info.paySelector,
             perTxUqor: 1n,
@@ -316,11 +333,13 @@ export function AgentConsole() {
       await load();
     });
 
-  const revoke = () =>
+  const revoke = () => revokeKey(info?.agent);
+
+  const revokeKey = (agentAddr: string | undefined) =>
     guard("revoke", async () => {
-      if (!signer || !info) return;
+      if (!signer || !agentAddr) return;
       const { revokeAgentMessage } = await import("@/lib/agent/leash");
-      await signer.signAndBroadcast([revokeAgentMessage(signer.address, info.agent)], "fenestella: revoke the bill payer");
+      await signer.signAndBroadcast([revokeAgentMessage(signer.address, agentAddr)], "fenestella: revoke the bill payer");
       await new Promise((res) => setTimeout(res, 2500));
       await load();
     });
@@ -410,6 +429,12 @@ export function AgentConsole() {
       <>
       <section className="card stack">
         <h2>Connect the account the agent will pay from</h2>
+        {ownAgent && (
+          <div className="notice info">
+            Your own agent (<span className="mono">{shortAddress(ownAgent.agent)}</span>, from the Fenestella MCP server) is
+            asking to be linked. Connect the account it should pay from, then you can link it.
+          </div>
+        )}
         <p>
           Testnet only. Use a wallet that signs: QoreX on testnet (phone app), or your QoreChain Dashboard wallet.
         </p>
@@ -426,6 +451,43 @@ export function AgentConsole() {
         <div className="notice err" role="alert">
           {error}
         </div>
+      )}
+
+      {ownAgent && (
+        <section className="card stack agent-step" id="own-agent" data-done={ownLinked}>
+          <div className="row between">
+            <h2>Leash your own agent</h2>
+            {ownLinked && <span className="pill active">Linked</span>}
+          </div>
+          <p>
+            An agent you run yourself (the Fenestella MCP server, in Claude or any MCP client) asked to be linked to this
+            account. It gets the same leash as Fenestella&apos;s agent: it may call only <strong>AgentVault.payBill</strong>,
+            and move at most 0.000001 QOR of your own balance. It pays only payees you approved in your vault, within your
+            limits. Its key never leaves the machine it runs on.
+          </p>
+          <div className="summary">
+            Agent key <span className="mono">{ownAgent.agent}</span>
+            {ownLinked && ownKey ? <> · linked until <strong>{unixToDate(ownKey.expiryUnix)}</strong></> : null}
+          </div>
+          {!info ? null : ownLinked ? (
+            <div className="row">
+              <button className="btn danger small" disabled={!!busy} onClick={() => revokeKey(ownAgent.agent)}>
+                {busy === "revoke" ? "Revoking…" : "Revoke this agent now"}
+              </button>
+            </div>
+          ) : (
+            <div className="row">
+              <button className="btn accent" disabled={!!busy} onClick={() => linkKey({ pubkey: ownAgent.agent.slice(2), possessionProof: ownAgent.proof.slice(2) }, "Own agent (MCP)")}>
+                {busy === "link" ? "Signing…" : `Link this agent for ${Math.min(Math.max(days, 1), 30)} days`}
+              </button>
+            </div>
+          )}
+          {linkTx && (
+            <a className="faint" href={`/tx/${linkTx}`} target="_blank" rel="noreferrer">
+              Link transaction
+            </a>
+          )}
+        </section>
       )}
 
       <section className="card stack agent-step" data-done={linked}>

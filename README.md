@@ -16,6 +16,7 @@ On QoreChain that opening is real. A stolen classical (ECDSA) key can only act t
 4. **Let apps ask.** One call, `requestWindow()`, for any dApp or agent to ask for exactly the window it needs: `npm install @fenestella/connect`.
 5. **Try to rob it.** The [attack lab](https://fenestella.vercel.app/lab) runs 13 real attacks on demand and names the layer that stops each one.
 6. **See the whole chain.** The [Q-Day radar](https://fenestella.vercel.app/radar) classifies every account on mainnet and testnet, and seals yours in one click.
+7. **Hand it to your own AI.** `npx @fenestella/mcp` gives Claude or any MCP client a QoreChain agent on the same leash: it can pay your approved bills, and the chain refuses everything else.
 
 Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Developer Fest · Category: **Post-Quantum AI Agents** · Network: `qorechain-diana` (testnet, EVM chain id 9800).
 
@@ -95,6 +96,8 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | Mandate with an anchor the owner never signed | **The agent's anchor check** | none needed |
 | Pay the same bill twice | **The vault** (`AlreadyPaid`) | simulated |
 | Phishing invoice, prompt injection | **The AI** (refused after checking the chain) | none needed |
+
+**Your own AI agent over MCP, live** (17 November 2026, [`scripts/spike-mcp.ts`](scripts/spike-mcp.ts) through a real MCP client): the owner linked the MCP server's key on the vault leash ([82A68CEA…](https://fenestella.vercel.app/tx/82A68CEA3D7672112D817073E9CDD461CDDD2BF57B76E3BC819049EFC3581A64)); the agent signed `payBill` on its own machine and Fenestella's relayer broadcast it: 0.15 QOR paid from the vault ([1A285C63…](https://fenestella.vercel.app/tx/1A285C635AB301D9CEF0270A44E42ABD3880018FF10696895B8CCAFD23F6D4B1)). Asked to pay a bill from a payee the owner never approved, it was refused (`PayeeNotApproved`) before any fee was spent.
 
 **Two-way messages, live:** after an autopay payment ([D0072…](https://fenestella.vercel.app/tx/D007284BED7C00B5F2C8734D726091C26A72C0E42D8C423E54B71B23BEA44408)) the agent posted a report ([0x5886c0fb…](https://fenestella.vercel.app/tx/0x5886c0fb740569803b2d62eb8f5ec9b2395c88462757ec8646aba6be7cdf2c79)): signed by its on-chain identity `qor19kdfkf3lrmyt5klerx6jhfgsxde87je0vqvs72` (hybrid ML-DSA-87, verified against the key registered on chain) and sealed to the owner's published ML-KEM-1024 key ([C358F3EA…](https://fenestella.vercel.app/tx/C358F3EAA433A00F4AC285BCE5B0AAD6B58B81430DD93F98D8F81992E72E4DCB)). The owner opened it; another account's keys could not.
 
@@ -214,6 +217,9 @@ It also says what people miss: the window's cap counts native QOR only, a token 
 ### The Q-Day radar
 [`scripts/radar-scan.ts`](scripts/radar-scan.ts) lists every account on mainnet and testnet, counts the ones that never signed as "not exposed yet" (their public key is not on chain), and reads every other one with the console's own `readAccount` and `assessExposure`. A [GitHub Actions job](.github/workflows/radar.yml) runs it every six hours and publishes **totals only**, never an address, to the `radar-data` branch with their history; [/radar](https://fenestella.vercel.app/radar) reads them. The page also reads your own account and offers the one fix that seals it: register the post-quantum key (QoreX does it with the first send) or close the window.
 
+### Your own agent, over MCP
+[`@fenestella/mcp`](packages/mcp) is an MCP server for Claude, Cursor or any MCP client. Without a key it reads: an account's exposure (and what contracts see through the `pqcKeyStatus` precompile, via `@qorechain/evm`), the radar, a vault and its bills, and `pqcVerify`. With `FENESTELLA_AGENT_KEY` it is an agent the owner runs themself: `link_agent` gives a link where the owner puts its key (one per owner, derived from the master key) on the same leash as Fenestella's agent, and `pay_bill` signs `payBill` locally and posts it to [`/api/agent/relay`](app/api/agent/relay/route.ts). The relayer forwards only that call, checks the signature and the key's link first, and does not spend a fee on a bill the vault would refuse. `request_window` builds a link to the approval page, so an agent with no browser can ask for a scoped window too.
+
 ### Two-way messages
 Mandates go from the owner to the agent, sealed and anchored with the owner's post-quantum key. Reports come back: after every payment the agent signs a report with its own on-chain identity (an account derived from its master secret, ML-DSA-87 registered) using QoreSign, seals it with QoreSeal to the owner's ML-KEM-1024 key from the chain's registry, and posts it to [`AgentReports`](contracts/src/AgentReports.sol), an emit-only mailbox. The owner's browser opens each report and verifies its signature against the agent's key on chain ([`lib/agent/reports.ts`](lib/agent/reports.ts), [`components/AgentInbox.tsx`](components/AgentInbox.tsx)).
 
@@ -285,6 +291,7 @@ lib/agent/           leash, vault (AgentVault calls and signed admin), mandate, 
 lib/signer/          QoreX signer, local / Dashboard signer (testnet only)
 lib/wallets/         wallet detection
 packages/connect/    @fenestella/connect: requestWindow()
+packages/mcp/        @fenestella/mcp: the MCP server for AI agents
 contracts/           Foundry: QorePQC, FenestellaReceipts, Bills, tests
 scripts/             spikes, attack, deploy, drill, receipt, accounts
 tests/               unit tests (vitest) and end-to-end tests (Playwright)

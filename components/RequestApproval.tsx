@@ -11,6 +11,7 @@ import {
 } from "@fenestella/connect";
 import { fetchAccount, pollAccount, type AccountAnswer } from "@/lib/client";
 import { isNetworkId, NETWORKS } from "@/lib/networks";
+import { decodeRequestLink } from "@/lib/request-link";
 import { ConnectPanel, useWallet } from "./Wallet";
 import { describeSpec } from "./WindowForm";
 
@@ -18,7 +19,10 @@ interface Incoming {
   request: RequestMessage;
   /** The caller's origin as the browser reported it. Never taken from the message body. */
   origin: string;
+  /** Opened from a link (an AI agent, a terminal): no opener, so nobody vouches for the caller. */
+  viaLink?: boolean;
 }
+
 
 type Phase =
   | { kind: "waiting" }
@@ -51,7 +55,22 @@ export function RequestApproval() {
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) {
-      setPhase({ kind: "invalid", text: "This page is opened by a dApp that needs an EVM window. There is no request here." });
+      const link = decodeRequestLink(window.location.search);
+      if (!link) {
+        setPhase({ kind: "invalid", text: "This page is opened by a dApp that needs an EVM window. There is no request here." });
+        return;
+      }
+      const problems = validateWindowSpec(link.request.spec);
+      if (!isNetworkId(link.request.network)) problems.push("Unknown network.");
+      if (!link.request.reason || link.request.reason.length > MAX_REASON_LENGTH) problems.push("The request carries no usable reason.");
+      if (problems.length > 0) {
+        setPhase({ kind: "invalid", text: `This request is not valid and was refused. ${problems.join(" ")}` });
+        return;
+      }
+      // Nobody to answer: the agent reads the window from the chain.
+      answered.current = true;
+      setIncoming({ request: link.request, origin: link.from, viaLink: true });
+      setPhase({ kind: "review" });
       return;
     }
     const onMessage = (event: MessageEvent) => {
@@ -119,7 +138,7 @@ export function RequestApproval() {
     );
   }
 
-  const { request, origin } = incoming;
+  const { request, origin, viaLink } = incoming;
   const spec = request.spec;
   const targets = spec.allowedTargets ?? [];
   const blockSeconds = account?.truth.blockSeconds ?? 3.2;
@@ -193,14 +212,18 @@ export function RequestApproval() {
     <div className="request-page">
       <div>
         <span className="eyebrow">Window request · {NETWORKS[network].label}</span>
-        <h2 style={{ marginTop: 6 }}>This site is asking for an opening on your account</h2>
+        <h2 style={{ marginTop: 6 }}>{viaLink ? "An agent is asking for an opening on your account" : "This site is asking for an opening on your account"}</h2>
       </div>
 
       <div className="panel">
       <div className="stack">
         <span className="label">Asked by</span>
         <div className="origin-box">{origin}</div>
-        <span className="faint">This is the address your browser reports for the site. Check that it is the one you were using.</span>
+        <span className="faint">
+          {viaLink
+            ? "This request came as a link, so this is only the name the agent gave itself and nothing vouches for it. Approve only if you asked your own agent for this a moment ago."
+            : "This is the address your browser reports for the site. Check that it is the one you were using."}
+        </span>
       </div>
 
       <div className="stack">
@@ -226,7 +249,7 @@ export function RequestApproval() {
 
       {phase.kind === "done" ? (
         <div className="notice ok" role="status">
-          The window is open. You can close this page and return to the site.
+          {viaLink ? "The window is open. Your agent reads it from the chain, so you can close this page." : "The window is open. You can close this page and return to the site."}
         </div>
       ) : phase.kind === "error" ? (
         <div className="stack">
