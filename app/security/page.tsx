@@ -21,9 +21,26 @@ export default function SecurityPage() {
       </ul>
       <p>
         We ran this ourselves on testnet. With only the classical key of a protected account, a native transfer, an
-        open-window message and an EVM transfer were each refused, and the balance did not change. The script is{" "}
-        <a href="https://github.com/angelraph/fenestella/blob/main/scripts/attack.ts">scripts/attack.ts</a>.
+        open-window message and an EVM transfer were each refused, and the balance did not change. You can run those
+        three, and ten more against the agent, the vault, the seal and the AI, in the <Link href="/lab">attack lab</Link>.
       </p>
+
+      <h2>What stops a stolen agent key</h2>
+      <ul>
+        <li>
+          The agent&apos;s key is linked to your account with a spending rule the chain enforces: it may call one
+          function, <code>AgentVault.payBill</code>, and move at most 0.000001 QOR of your own balance.
+        </li>
+        <li>
+          The vault pays only payees you approved, within limits you set, from the budget you put in. Only your ML-DSA-87
+          signature, checked on chain by <code>pqcVerify</code>, changes payees or limits, pauses the vault or
+          withdraws.
+        </li>
+        <li>
+          The AI reviews every bill, but it never has the last word. A guard written in code can only make its answer
+          stricter, and the chain and the vault come after both.
+        </li>
+      </ul>
 
       <h2>What an open window still allows</h2>
       <ul>
@@ -55,12 +72,24 @@ export default function SecurityPage() {
             <td>Show a dApp&apos;s request with the origin your browser reports</td>
             <td>Let the dApp choose the wording of what you approve</td>
           </tr>
+          <tr>
+            <td>Run a testnet agent and a relayer, with their own throwaway keys</td>
+            <td>Move your money outside the leash you signed: one vault function, approved payees, your limits</td>
+          </tr>
         </tbody>
       </table>
 
       <h2>Limits you should know</h2>
       <ul>
-        <li>This is a hackathon project. It has tests, and it has not had an external audit.</li>
+        <li>
+          This is a hackathon project. It has 49 contract tests and 86 unit tests, and its contracts went through two
+          QoreChain AI audits with every finding answered in{" "}
+          <a href="https://github.com/angelraph/fenestella/blob/main/AUDIT.md">AUDIT.md</a>. No human firm has audited it.
+        </li>
+        <li>
+          The AI can be fooled, and a payee you approved can still bill you for real amounts within your limits. Approve
+          only payees you trust.
+        </li>
         <li>
           A wrong answer from this site could mislead you. The exposure logic is open, unit-tested and treats anything
           it could not read as unknown, never as safe. You can check any account against the chain yourself.
@@ -70,8 +99,10 @@ export default function SecurityPage() {
           The testnet key option keeps a phrase in the tab&apos;s memory. It is for development and refuses mainnet.
         </li>
         <li>
-          The contracts have no owner, no upgrade path and hold no funds. <code>FenestellaReceipts</code> never trusts{" "}
-          <code>msg.sender</code>; it requires an ML-DSA-87 signature checked by the chain&apos;s precompile.
+          The contracts have no admin and no upgrade path. Only <code>AgentVault</code> holds funds, each owner&apos;s
+          agent budget, and only that owner&apos;s ML-DSA-87 signature can take it out. The vault&apos;s admin actions and{" "}
+          <code>FenestellaReceipts</code> never trust <code>msg.sender</code>: they require a signature checked by the
+          chain&apos;s precompile.
         </li>
       </ul>
 

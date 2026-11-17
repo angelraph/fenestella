@@ -70,8 +70,8 @@ export default function DocsPage() {
       <span className="eyebrow">Docs</span>
       <h1>Build with Fenestella</h1>
       <p className="lede">
-        Three things you can use today: the request call, the account API, and the contracts. Everything here runs
-        against <code>qorechain-diana</code>.
+        Four things you can use today: the request call, the MCP server for AI agents, the account API, and the
+        contracts. Everything here runs against <code>qorechain-diana</code>; reading accounts works on mainnet too.
       </p>
 
       <h2 id="request">Ask for a window</h2>
@@ -181,9 +181,23 @@ export default function DocsPage() {
             <td>Records a digest only with an ML-DSA-87 signature by the account&apos;s registered key</td>
           </tr>
           <tr>
+            <td>AgentVault</td>
+            <td><code>0x51fb13cc0513f02cd16e98f9b4a9f233027c2551</code></td>
+            <td>
+              Holds each owner&apos;s agent budget and bills. Pays only an approved payee within the owner&apos;s limits;
+              payees, limits, pause and withdrawal change only with the owner&apos;s ML-DSA-87 signature, checked by{" "}
+              <code>pqcVerify</code>
+            </td>
+          </tr>
+          <tr>
+            <td>AgentReports</td>
+            <td><code>0x2b8d4cdcdc7a2efbcfca7691b58605dc1bc91462</code></td>
+            <td>A mailbox that only emits: the agent posts reports signed with its post-quantum key and sealed to the owner</td>
+          </tr>
+          <tr>
             <td>Bills</td>
             <td><code>0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0</code></td>
-            <td>Post a bill; paying forwards the exact amount to the payee and holds nothing</td>
+            <td>The first bill contract, kept for older leashes: paying forwards the exact amount and holds nothing</td>
           </tr>
         </tbody>
       </table>

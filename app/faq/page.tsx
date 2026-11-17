@@ -9,7 +9,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
       <>
         A console for QoreChain accounts. It shows what a stolen classical key could still do to an account, lets the
         owner open an EVM window limited to exactly what they need, and gives dApps and agents one way to ask for such
-        a window.
+        a window. On top of that sits an AI agent that can pay your bills without being able to rob you.
       </>
     ),
   },
@@ -30,7 +30,8 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
       <>
         No. Reading an account needs no wallet at all. To change anything, Fenestella hands your wallet a message; the
         wallet shows it, signs it and broadcasts it. Fenestella never sees a private key or a recovery phrase when you
-        use QoreX.
+        use QoreX. The testnet bill-paying agent and the relayer that pays its fees have keys of their own, and those
+        keys can do only what your signed leash allows.
       </>
     ),
   },
@@ -114,10 +115,53 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
+    q: "What does the AI agent do, and what stops it going wrong?",
+    a: (
+      <>
+        On testnet it pays your bills. It reads each invoice with an AI model, checks it against the chain and refuses
+        phishing and prompt injection. But the AI is a guard, not the wall: its key can call one function of your vault,
+        the vault pays only payees you approved within your limits, and only your post-quantum signature changes those.
+        You can let it pay by itself (autopay), type your rules in plain English, and read the reports it sends you,
+        signed with its own post-quantum key and sealed so only you can open them. <Link href="/agent">Try it</Link>.
+      </>
+    ),
+  },
+  {
+    q: "Can I try to break it?",
+    a: (
+      <>
+        Yes. The <Link href="/lab">attack lab</Link> runs 13 real attacks on testnet when you press the button: a stolen
+        classical key, a stolen agent key, forged post-quantum signatures, a tampered mandate, a replayed bill, phishing
+        and prompt injection. Each one names the layer that stopped it.
+      </>
+    ),
+  },
+  {
+    q: "How much of QoreChain is ready for Q-Day?",
+    a: (
+      <>
+        The <Link href="/radar">Q-Day radar</Link> reads every account on mainnet and testnet every six hours and
+        shows the totals: how many are sealed, how many have a window open, and how many could be taken over today. It
+        never shows an address. If yours needs a fix, the page offers the one that seals it.
+      </>
+    ),
+  },
+  {
+    q: "Can I run the agent myself, from Claude or another AI app?",
+    a: (
+      <>
+        Yes. The Fenestella MCP server gives any app that speaks MCP the same agent on the same leash, with its key on
+        your own machine. See <Link href="/docs#mcp">the docs</Link>.
+      </>
+    ),
+  },
+  {
     q: "Is Fenestella audited?",
     a: (
       <>
-        No. It is a hackathon project, open source under the MIT licence, with tests you can run yourself. Read{" "}
+        Not by a human firm. Its contracts went through two QoreChain AI audits, and every finding is answered in the
+        repository&apos;s AUDIT.md. The findings that held up were fixed, and the vault was redeployed after the second. It is open source under the
+        MIT licence, with 49 contract tests and 86 unit tests you can run yourself. Read{" "}
         <Link href="/security">the security page</Link> for what it does and does not protect.
       </>
     ),

@@ -30,9 +30,9 @@ export default function Home() {
   return (
     <>
       <section className="hero">
-        <span className="badge">
-          <b>New</b> Scoped EVM windows, without the command line
-        </span>
+        <Link className="badge" href="/lab">
+          <b>New</b> Try to rob it: 13 live attacks in the attack lab
+        </Link>
         <h1>
           How far does your key <span className="hl">reach</span> right now?
         </h1>
@@ -117,26 +117,30 @@ export default function Home() {
           <span className="eyebrow">Checked on testnet</span>
           <h2 id="proof-h">Enforced by the chain, not by this page</h2>
           <p>
-            We ran the attacker ourselves: holding only the classical key of a protected account, every attempt was
-            refused by QoreChain.
+            We play the attacker ourselves, and you can too. In the <Link href="/lab">attack lab</Link> every attempt
+            runs live on testnet and is refused by the chain, the vault, the seal or the AI, with a receipt when a
+            transaction reached the chain.
           </p>
         </div>
         <div className="proof">
           <div>
-            <div className="n">3 of 3</div>
-            <div className="l">attacks with the classical key alone refused: native send, open window, EVM send</div>
+            <div className="n">13 of 13</div>
+            <div className="l">
+              real attacks refused live: a stolen classical key, a stolen agent key, forged post-quantum signatures,
+              phishing and prompt injection. <Link href="/lab">Run them →</Link>
+            </div>
           </div>
           <div>
-            <div className="n">20</div>
+            <div className="n">49</div>
             <div className="l">contract tests passing, including fail-closed checks for inactive precompiles</div>
           </div>
           <div>
-            <div className="n">43</div>
-            <div className="l">unit tests on the exposure answer and the request checks</div>
+            <div className="n">86</div>
+            <div className="l">unit tests on the exposure answer, the request checks, the AI&apos;s guard, autopay and plain-English rules</div>
           </div>
           <div>
             <div className="n">0</div>
-            <div className="l">keys held by Fenestella. Your wallet signs every transaction.</div>
+            <div className="l">of your keys held by Fenestella. Your wallet signs everything you approve.</div>
           </div>
         </div>
       </section>
