@@ -1,0 +1,41 @@
+{
+  "unitTests": 89,
+  "unitByFile": {
+    "autopay": 16,
+    "connect": 25,
+    "exposure": 18,
+    "guard": 14,
+    "policy": 9,
+    "request-link": 4,
+    "stats": 3
+  },
+  "contractTests": 49,
+  "contractBySuite": {
+    "AgentReportsTest": 4,
+    "AgentVaultTest": 24,
+    "BillsTest": 9,
+    "ReceiptsTest": 12
+  },
+  "attacks": 13,
+  "attackIds": [
+    "classical-send",
+    "classical-window",
+    "classical-evm",
+    "agent-drain",
+    "agent-approve-self",
+    "agent-thief-bill",
+    "forged-vault-admin",
+    "forged-receipt",
+    "tampered-mandate",
+    "fake-anchor",
+    "replay-bill",
+    "ai-phishing",
+    "ai-injection"
+  ],
+  "contracts": [
+    "FenestellaReceipts",
+    "Bills",
+    "AgentVault",
+    "AgentReports"
+  ]
+}

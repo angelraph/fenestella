@@ -1,0 +1,27 @@
+name: Published numbers are current
+
+# The site and README show test and attack counts from lib/generated/stats.json.
+# This job re-runs the unit and contract tests and fails if that file is stale,
+# so a number on the site can never drift from the real runs unnoticed.
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: npm ci
+      - name: forge-std
+        run: test -d contracts/lib/forge-std || (cd contracts && forge install foundry-rs/forge-std --no-git)
+      - run: node scripts/gen-stats.mjs --check

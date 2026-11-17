@@ -1,4 +1,5 @@
 import Link from "next/link";
+import stats from "@/lib/generated/stats.json";
 
 export const metadata = { title: "Security · Fenestella" };
 
@@ -22,7 +23,7 @@ export default function SecurityPage() {
       <p>
         We ran this ourselves on testnet. With only the classical key of a protected account, a native transfer, an
         open-window message and an EVM transfer were each refused, and the balance did not change. You can run those
-        three, and ten more against the agent, the vault, the seal and the AI, in the <Link href="/lab">attack lab</Link>.
+        three, and {stats.attacks - 3} more against the agent, the vault, the seal and the AI, in the <Link href="/lab">attack lab</Link>.
       </p>
 
       <h2>What stops a stolen agent key</h2>
@@ -82,7 +83,7 @@ export default function SecurityPage() {
       <h2>Limits you should know</h2>
       <ul>
         <li>
-          This is a hackathon project. It has 49 contract tests and 86 unit tests, and its contracts went through two
+          This is a hackathon project. It has {stats.contractTests} contract tests and {stats.unitTests} unit tests, and its contracts went through two
           QoreChain AI audits with every finding answered in{" "}
           <a href="https://github.com/angelraph/fenestella/blob/main/AUDIT.md">AUDIT.md</a>. No human firm has audited it.
         </li>

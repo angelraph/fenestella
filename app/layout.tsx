@@ -3,8 +3,10 @@ import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
 import { Logo } from "@/components/Aperture";
 import { HeaderWallet } from "@/components/HeaderWallet";
+import { SiteMenu } from "@/components/SiteMenu";
 import { WalletProvider } from "@/components/Wallet";
 import "./globals.css";
+import "./motion.css";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
@@ -42,7 +44,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/docs">Docs</Link>
                 <Link href="/faq">FAQ</Link>
               </nav>
-              <HeaderWallet />
+              <div className="header-wallet-desktop">
+                <HeaderWallet />
+              </div>
+              <SiteMenu />
             </div>
           </header>
           <main className="shell">{children}</main>

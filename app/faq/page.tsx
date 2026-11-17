@@ -1,4 +1,5 @@
 import Link from "next/link";
+import stats from "@/lib/generated/stats.json";
 
 export const metadata = { title: "FAQ · Fenestella" };
 
@@ -130,7 +131,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     q: "Can I try to break it?",
     a: (
       <>
-        Yes. The <Link href="/lab">attack lab</Link> runs 13 real attacks on testnet when you press the button: a stolen
+        Yes. The <Link href="/lab">attack lab</Link> runs {stats.attacks} real attacks on testnet when you press the button: a stolen
         classical key, a stolen agent key, forged post-quantum signatures, a tampered mandate, a replayed bill, phishing
         and prompt injection. Each one names the layer that stopped it.
       </>
@@ -161,7 +162,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
       <>
         Not by a human firm. Its contracts went through two QoreChain AI audits, and every finding is answered in the
         repository&apos;s AUDIT.md. The findings that held up were fixed, and the vault was redeployed after the second. It is open source under the
-        MIT licence, with 49 contract tests and 86 unit tests you can run yourself. Read{" "}
+        MIT licence, with {stats.contractTests} contract tests and {stats.unitTests} unit tests you can run yourself. Read{" "}
         <Link href="/security">the security page</Link> for what it does and does not protect.
       </>
     ),

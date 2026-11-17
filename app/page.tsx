@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { Aperture } from "@/components/Aperture";
+import { LiveShowcase, type ShowcaseData } from "@/components/LiveShowcase";
 import { Lookup } from "@/components/Lookup";
+import { Reveal } from "@/components/Reveal";
 import type { ExposureLevel } from "@/lib/exposure";
+import stats from "@/lib/generated/stats.json";
+import { loadActivity, loadRadar, type RadarTotals } from "@/lib/site-data";
+
+export const revalidate = 120;
 
 const STATES: { level: ExposureLevel; name: string; line: string }[] = [
   {
@@ -26,12 +32,68 @@ const STATES: { level: ExposureLevel; name: string; line: string }[] = [
   },
 ];
 
-export default function Home() {
+function qor(u: string): string {
+  const v = Number(BigInt(u || "0")) / 1e6;
+  if (v >= 1e9) return `${(v / 1e9).toFixed(2)} billion`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(2)} million`;
+  return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
+const LAB_GROUPS: { label: string; pattern: RegExp }[] = [
+  { label: "Stolen classical key", pattern: /^classical-/ },
+  { label: "Stolen agent key", pattern: /^agent-/ },
+  { label: "Forged, tampered or replayed", pattern: /^(forged-|tampered-|fake-|replay-)/ },
+  { label: "Fooling the AI", pattern: /^ai-/ },
+];
+const NAMES: Record<string, string> = {
+  AgentVaultTest: "AgentVault",
+  ReceiptsTest: "Receipts",
+  BillsTest: "Bills",
+  AgentReportsTest: "Reports",
+  exposure: "exposure",
+  connect: "requests",
+  autopay: "autopay",
+  guard: "AI guard",
+  policy: "plain English",
+  "request-link": "agent links",
+  stats: "numbers",
+};
+
+function radarCard(r: RadarTotals): ShowcaseData["radar"][number] {
+  return {
+    network: r.network,
+    scannedAt: r.scannedAt,
+    takeover: r.levels.takeover,
+    atRiskQor: qor(r.valueAtRiskUqor),
+    sealed: r.levels.sealed,
+    sealedQor: qor(r.valueSealedUqor),
+    windows: r.levels.open + r.levels.scoped,
+    exposed: r.exposed,
+  };
+}
+
+export default async function Home() {
+  const [mainnet, testnet, feed] = await Promise.all([loadRadar("mainnet"), loadRadar("testnet"), loadActivity(8)]);
+  const byDesc = (o: Record<string, number>) =>
+    Object.entries(o)
+      .map(([name, n]) => ({ name: NAMES[name] ?? name, n }))
+      .sort((a, b) => b.n - a.n);
+  const data: ShowcaseData = {
+    attacks: stats.attacks,
+    attackGroups: LAB_GROUPS.map((g) => ({ label: g.label, n: stats.attackIds.filter((id) => g.pattern.test(id)).length })),
+    unitTests: stats.unitTests,
+    unitByFile: byDesc(stats.unitByFile),
+    contractTests: stats.contractTests,
+    contractBySuite: byDesc(stats.contractBySuite),
+    radar: [mainnet, testnet].filter((r): r is RadarTotals => !!r).map(radarCard),
+    feed,
+    mcpTools: 8,
+  };
   return (
     <>
       <section className="hero">
         <Link className="badge" href="/lab">
-          <b>New</b> Try to rob it: 13 live attacks in the attack lab
+          <b>New</b> Try to rob it: {stats.attacks} live attacks in the attack lab
         </Link>
         <h1>
           How far does your key <span className="hl">reach</span> right now?
@@ -48,7 +110,16 @@ export default function Home() {
         </a>
       </section>
 
-      <section className="section" aria-labelledby="states-h">
+      <Reveal as="section" className="section" aria-labelledby="live-h">
+        <div className="section-head">
+          <span className="eyebrow">Live, not a mock-up</span>
+          <h2 id="live-h">What it has proven, right now</h2>
+          <p>Read from the chain and from the real test runs each time this page refreshes. Swipe, or let it play.</p>
+        </div>
+        <LiveShowcase data={data} />
+      </Reveal>
+
+      <Reveal as="section" className="section" aria-labelledby="states-h">
         <div className="section-head">
           <span className="eyebrow">One answer per account</span>
           <h2 id="states-h">Every account is in one of four states</h2>
@@ -68,9 +139,9 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </section>
+      </Reveal>
 
-      <section className="section" id="how" aria-labelledby="how-h">
+      <Reveal as="section" className="section" id="how" aria-labelledby="how-h">
         <div className="section-head">
           <span className="eyebrow">How it works</span>
           <h2 id="how-h">See it. Narrow it. Let apps ask for it.</h2>
@@ -110,9 +181,9 @@ export default function Home() {
             </Link>
           </div>
         </div>
-      </section>
+      </Reveal>
 
-      <section className="section" aria-labelledby="proof-h">
+      <Reveal as="section" className="section" aria-labelledby="proof-h">
         <div className="section-head">
           <span className="eyebrow">Checked on testnet</span>
           <h2 id="proof-h">Enforced by the chain, not by this page</h2>
@@ -124,18 +195,20 @@ export default function Home() {
         </div>
         <div className="proof">
           <div>
-            <div className="n">13 of 13</div>
+            <div className="n">
+              {stats.attacks} of {stats.attacks}
+            </div>
             <div className="l">
               real attacks refused live: a stolen classical key, a stolen agent key, forged post-quantum signatures,
               phishing and prompt injection. <Link href="/lab">Run them →</Link>
             </div>
           </div>
           <div>
-            <div className="n">49</div>
+            <div className="n">{stats.contractTests}</div>
             <div className="l">contract tests passing, including fail-closed checks for inactive precompiles</div>
           </div>
           <div>
-            <div className="n">86</div>
+            <div className="n">{stats.unitTests}</div>
             <div className="l">unit tests on the exposure answer, the request checks, the AI&apos;s guard, autopay and plain-English rules</div>
           </div>
           <div>
@@ -143,7 +216,7 @@ export default function Home() {
             <div className="l">of your keys held by Fenestella. Your wallet signs everything you approve.</div>
           </div>
         </div>
-      </section>
+      </Reveal>
     </>
   );
 }

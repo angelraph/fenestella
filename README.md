@@ -260,7 +260,7 @@ Requires Node.js 22 or newer.
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 86 unit tests
+npm test           # 89 unit tests
 npx playwright test  # end-to-end, against the live testnet, no wallet needed
 cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 49 contract tests
 ```

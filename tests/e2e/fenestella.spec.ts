@@ -21,6 +21,47 @@ test("receipt pages read testnet transactions", async ({ page }) => {
   await expect(page.locator(".notice.err")).toContainText("per-tx limit");
 });
 
+test("the landing page shows live proof that slides, with numbers from the real test runs", async ({ page }) => {
+  const stats = (await import("../../lib/generated/stats.json", { with: { type: "json" } })).default;
+  await page.goto("/");
+  const stage = page.locator(".lv-stage");
+  await expect(stage).toBeVisible();
+  await expect(page.locator(".lv-slide.is-active")).toContainText(`of ${stats.attacks} refused`);
+  await stage.getByRole("button", { name: "Next" }).click();
+  await expect(page.locator(".lv-slide.is-active")).toContainText("How the agent is kept honest");
+  await expect(page.locator(".proof")).toContainText(String(stats.contractTests));
+  await expect(page.locator(".proof")).toContainText(String(stats.unitTests));
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+
+  test("every page is reachable from the menu, wallet included", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator(".site-nav")).toBeHidden();
+    const menu = page.getByRole("button", { name: "Open menu" });
+    await expect(menu).toBeVisible();
+    await menu.click();
+    const panel = page.locator("#site-menu-panel");
+    await expect(panel.getByRole("button", { name: "Connect wallet" })).toBeVisible();
+    for (const label of ["Console", "Agent", "Attack lab", "Radar", "For dApps", "Docs", "FAQ", "Security"]) {
+      await expect(panel.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
+    }
+    await panel.getByRole("link", { name: /^Attack lab/ }).click();
+    await expect(page).toHaveURL(/\/lab$/);
+    await expect(panel).toBeHidden();
+  });
+
+  for (const path of ["/", "/agent", "/lab", "/radar", "/demo", "/docs", "/faq", "/security", `/account/${DEV}?network=testnet`, "/account/qor1072yq0ksuukxkym8d9r0mpr3upz4awf00u5ew7?network=testnet"]) {
+    test(`nothing is wider than the screen: ${path}`, async ({ page }) => {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      const width = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect(width).toBeLessThanOrEqual(375);
+    });
+  }
+});
+
 test("the agent page shows its AI and its leash steps", async ({ page }) => {
   await page.goto("/agent");
   await expect(page.locator("h1")).toContainText("An AI agent that can pay your bills");
