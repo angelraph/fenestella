@@ -50,6 +50,8 @@ const NAMES: Record<string, string> = {
   ReceiptsTest: "Receipts",
   BillsTest: "Bills",
   AgentReportsTest: "Reports",
+  AgentVaultFuzzTest: "vault fuzzing",
+  AgentVaultInvariantTest: "invariant suite",
   exposure: "exposure",
   connect: "requests",
   autopay: "autopay",
@@ -86,6 +88,7 @@ export default async function Home() {
     contractTests: stats.contractTests,
     contractBySuite: byDesc(stats.contractBySuite),
     browserTests: stats.browserTests,
+    invariants: stats.invariants,
     radar: [mainnet, testnet].filter((r): r is RadarTotals => !!r).map(radarCard),
     feed,
     mcpTools: 8,
@@ -206,7 +209,10 @@ export default async function Home() {
           </div>
           <div>
             <div className="n">{stats.contractTests}</div>
-            <div className="l">contract tests passing, including fail-closed checks for inactive precompiles</div>
+            <div className="l">
+              contract tests passing: {stats.fuzzTests} fuzz tests, {stats.invariants} invariants held over thousands of
+              random attacker moves, and fail-closed checks for inactive precompiles
+            </div>
           </div>
           <div>
             <div className="n">{stats.unitTests}</div>

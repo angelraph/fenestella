@@ -14,7 +14,7 @@ describe("published numbers match the real test runs", () => {
   it("README totals", () => {
     expect(readme).toContain(`npm test           # ${stats.unitTests} unit tests`);
     expect(readme).toContain(`forge test   # ${stats.contractTests} contract tests`);
-    expect(readme).toContain(`(${stats.contractTests} Foundry tests pass;`);
+    expect(readme).toContain(`(${stats.contractTests} Foundry tests pass, including fuzz tests and invariants;`);
   });
 
   it("README per-file counts", () => {
@@ -23,6 +23,19 @@ describe("published numbers match the real test runs", () => {
     expect(readme).toContain(`(lib/agent/autopay.ts), ${stats.unitByFile.autopay} tests)`);
     expect(readme).toContain(`(lib/agent/guard.ts), ${stats.unitByFile.guard} tests)`);
     expect(threat).toContain(`**Verified** by ${stats.contractBySuite.AgentVaultTest} Foundry tests`);
+  });
+
+  it("AI_USAGE.md states the same numbers", () => {
+    const ai = readFileSync("AI_USAGE.md", "utf8");
+    expect(ai).toContain(
+      `${stats.unitTests} unit tests, ${stats.contractTests} contract tests (${stats.fuzzTests} of them fuzz tests, plus an invariant suite that checks ${stats.invariants} rules`,
+    );
+    expect(ai).toContain(`and ${stats.browserTests} browser tests.`);
+    expect(ai).toContain(`The attack lab's ${stats.attacks} attacks`);
+  });
+
+  it("the README's judge path states the lab's real attack count", () => {
+    expect(readme).toContain(`All ${stats.attacks} are refused live`);
   });
 
   it("the lab has the attacks the site counts", () => {

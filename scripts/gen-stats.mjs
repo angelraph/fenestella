@@ -42,9 +42,15 @@ const forgeJson = run(forge, ["test", "--root", "contracts", "--json"]);
 const suites = JSON.parse(forgeJson.slice(forgeJson.indexOf("{")));
 let contractTests = 0;
 let contractFailed = 0;
+let invariants = 0;
+let fuzzTests = 0;
 const contractBySuite = {};
 for (const [suite, r] of Object.entries(suites)) {
   const results = Object.values(r.test_results ?? {});
+  for (const t of results) {
+    if (t.kind?.Invariant) invariants += Number(t.invariant_count ?? 0) || Object.keys(t.invariant_predicate_results ?? {}).length || 1;
+    if (t.kind?.Fuzz) fuzzTests += 1;
+  }
   contractBySuite[suite.split(":").pop()] = results.length;
   contractTests += results.length;
   contractFailed += results.filter((t) => t.status !== "Success").length;
@@ -70,6 +76,8 @@ const stats = {
   unitByFile,
   contractTests,
   contractBySuite,
+  fuzzTests,
+  invariants,
   browserTests,
   attacks: attacks.length,
   attackIds: attacks,

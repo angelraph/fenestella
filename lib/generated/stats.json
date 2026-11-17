@@ -1,5 +1,5 @@
 {
-  "unitTests": 89,
+  "unitTests": 91,
   "unitByFile": {
     "autopay": 16,
     "connect": 25,
@@ -7,15 +7,19 @@
     "guard": 14,
     "policy": 9,
     "request-link": 4,
-    "stats": 3
+    "stats": 5
   },
-  "contractTests": 49,
+  "contractTests": 54,
   "contractBySuite": {
     "AgentReportsTest": 4,
+    "AgentVaultFuzzTest": 4,
+    "AgentVaultInvariantTest": 1,
     "AgentVaultTest": 24,
     "BillsTest": 9,
     "ReceiptsTest": 12
   },
+  "fuzzTests": 6,
+  "invariants": 6,
   "browserTests": 16,
   "attacks": 13,
   "attackIds": [

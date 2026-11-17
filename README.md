@@ -24,24 +24,31 @@ Built for [Build Before Q-Day](https://build.qorechain.io/), the QoreChain Devel
 
 ## For judges: try it in 3 minutes
 
-**1. Read an account (30 seconds, no wallet).** Open the account the demo video was recorded on: [fenestella.vercel.app/account/qor10dsp…70er](https://fenestella.vercel.app/account/qor10dspk3lpz8a9wecpzzjd3vftw5hm9959vk70er?network=testnet). It shows the one-sentence answer, the facts read from the chain, the agent's linked key and its spending rule. Then paste any testnet or mainnet address of your own on the [home page](https://fenestella.vercel.app).
+No wallet needed for the first four steps. Everything you see is read from the live testnet.
 
-**1b. Try to rob it (2 minutes, no wallet).** Open the [**attack lab**](https://fenestella.vercel.app/lab) and press *Run every attack*: a stolen classical key, a stolen agent key, forged post-quantum signatures, a tampered mandate, phishing and prompt injection. All 13 are refused live, each naming what stopped it. Then look at the [**Q-Day radar**](https://fenestella.vercel.app/radar): how much of QoreChain could be taken over today.
+**1. The landing page (20 seconds).** Open [fenestella.vercel.app](https://fenestella.vercel.app) and scroll to **"What it has proven, right now"**: the attack lab score, the radar for both networks and the test counts slide past, next to a feed of the agent's latest payments and refused attacks as the chain recorded them. Every number there comes from the chain or from the real test runs.
 
-**2. Watch the AI catch a scam (1 minute, no wallet).** Open [**Agent**](https://fenestella.vercel.app/agent) and scroll to **"No wallet? Watch the agent's AI catch a scam"**. It reads for a demo account with a funded vault. Press **Phishing: new address, urgent**, then **Review with the agent's AI**. It checks the chain with its tools and refuses, saying why. Try **Prompt injection** too.
+**2. Try to rob it (1 minute).** Open the [**attack lab**](https://fenestella.vercel.app/lab) and press **Run every attack**: a stolen classical key, a stolen agent key, forged post-quantum signatures, a tampered mandate, a replayed bill, phishing and prompt injection. All 13 are refused live, each naming the layer that stopped it. Scroll down to [**Every attempt, on the record**](https://fenestella.vercel.app/lab#log): every attack anyone has run, with the chain's own reason and a receipt.
 
-**3. Check the proof (1 minute, no wallet).** Every result below opens a receipt page that reads the transaction straight from the testnet. Start with these four:
+**3. Watch the AI catch a scam (1 minute).** Open [**Agent**](https://fenestella.vercel.app/agent), scroll to **"No wallet? Watch the agent's AI catch a scam"**, press **Phishing: new address, urgent**, then **Review with the agent's AI**. It checks the chain with its tools and refuses, saying why. Then try **Genuine invoice**: it matches a real unpaid bill on chain and is approved.
+
+**4. See the whole chain (30 seconds).** The [**Q-Day radar**](https://fenestella.vercel.app/radar) shows how many accounts on mainnet and testnet a quantum attacker could take today, and how much they hold. Totals only, never an address.
+
+**5. Check the proof.** Every result opens a receipt page that reads the transaction straight from the testnet:
 - The agent paying a bill from its vault after its AI approved the sealed mandate: [receipt](https://fenestella.vercel.app/tx/98FAFAA72549D459214B8B74DDB7833497E05F92C216EEEE4CC880273AEF3BD2)
 - A stolen agent key paying a thief's bill, refused by the vault: [receipt](https://fenestella.vercel.app/tx/2215D12E61B14CFD36CCB661183473D95EF75139A5FC1106D5E9AEF002D24175)
 - The chain refusing a stolen agent key that tried to move 147 QOR: [receipt](https://fenestella.vercel.app/tx/8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042)
+- An agent running in an MCP app paying from the vault through Fenestella's relayer: [receipt](https://fenestella.vercel.app/tx/70F7E7E8E86E5C41BDBC0C6584F7BE5BFD67A0C64EE3E201C2317C61D05A941D)
 
-**4. Drive it yourself (2 minutes).** You need a testnet account with a little test QOR:
+**6. Run the agent from your own AI app.** `npx -y @fenestella/mcp` gives Claude or any MCP client 8 tools: check any account, read the radar and a vault, ask for a scoped window, and (with a key) pay approved bills. Setup is in the [docs](https://fenestella.vercel.app/docs#mcp).
+
+**7. Drive it yourself (a few minutes, a testnet account).**
 1. On the [QoreChain Dashboard](https://dashboard.qorechain.io/wallet), switch to **Testnet**, claim from the [faucet](https://dashboard.qorechain.io/faucet), and send any amount once so your post-quantum key is registered.
-2. On Fenestella, press **Connect wallet**, choose **QoreChain Dashboard wallet**, enter your address and the phrase you reveal on the Dashboard (testnet only; it stays in the tab's memory).
-3. Open your account: try **Open a fenestella** with the *One contract* preset, then close it.
-4. Go to [**Agent**](https://fenestella.vercel.app/agent): link the agent, ask the vendor for a bill, send a sealed mandate, then press **Play the stolen agent key**.
+2. On Fenestella, press **Connect wallet** and choose **QoreChain Dashboard wallet** (testnet only; the phrase stays in the tab's memory). On a phone, the wallet is at the bottom of the ☰ menu.
+3. Open your account and try **Open a fenestella** with the *One contract* preset, then close it.
+4. On [**Agent**](https://fenestella.vercel.app/agent): link the agent, fund your vault and sign its rules (or type them in plain English), ask the vendor for a bill, let the AI review it, send a sealed mandate, turn on autopay, read the agent's signed and sealed report, then press **Play the stolen agent key**.
 
-QoreX in the browser also works for reading accounts and for windows on mainnet. The QoreX extension has no testnet switch; on testnet use the QoreX phone app (Settings, then *Use testnet (developers)*) or the Dashboard wallet.
+QoreX works for reading accounts and for windows. The QoreX browser extension is mainnet only; on testnet use the QoreX phone app (Settings, then *Use testnet (developers)*) or the Dashboard wallet.
 
 ---
 
@@ -167,7 +174,7 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | A forged attestation (signature over a different digest) | **Refused** by `FenestellaReceipts`: `InvalidSignature` | simulated before the write |
 | The dev account's ML-DSA-87 key signs the exact bytes `messageFor()` returns; anyone relays it | Recorded; `isAttested` is true | [0xfa030023…541f](https://fenestella.vercel.app/tx/0xfa030023c46c526dd07eab33be5cda41c3de3e9a5aaced2498dfe084cbd7541f) |
 
-**Contracts on testnet** (49 Foundry tests pass; two QoreChain AI audits, both scored 85, every finding answered in [AUDIT.md](AUDIT.md))
+**Contracts on testnet** (54 Foundry tests pass, including fuzz tests and invariants; two QoreChain AI audits, both scored 85, every finding answered in [AUDIT.md](AUDIT.md))
 
 | Contract | Address | Deployment |
 | --- | --- | --- |
@@ -252,6 +259,7 @@ QoreX through `@qorechain/qorex-types`, Keplr-family wallets with the chain desc
 - [`FenestellaReceipts.sol`](contracts/src/FenestellaReceipts.sol): records a digest only with an ML-DSA-87 signature by the key the chain registered for the account. It never trusts `msg.sender`, which on QoreChain's EVM is the classical key.
 - [`AgentVault.sol`](contracts/src/AgentVault.sol): the agent's budget. Pays only real bills to approved payees within limits; payees, limits, pause and withdrawal need the owner's ML-DSA-87 signature checked by pqcVerify; withdrawals go only to the owner. QOR and ERC-20.
 - [`Bills.sol`](contracts/src/Bills.sol): the first agent's contract (before the vault), still on the drill list. Paying forwards the exact amount; it holds nothing.
+- **Invariants and fuzzing** ([`AgentVault.invariant.t.sol`](contracts/test/AgentVault.invariant.t.sol)): Foundry drives the vault with random sequences of deposits, bills, payments, owner-signed changes, forged admin calls, replayed signatures, loose value and time jumps, from the owner, an approved vendor and a thief. After every call it checks that the vault holds exactly what the owner is owed, that no forged signature ever changed anything, that every payment went to an approved payee while unpaused and within both limits, that only the owner's account paid, that no bill was paid twice, and that the thief never gained a coin. Fuzz tests add: any 4,627-byte signature that is not the owner's is refused, any other length is refused, the per-payment limit is exact to the wei, and nobody can withdraw more than the vault holds.
 
 ## Run it yourself
 
@@ -260,9 +268,9 @@ Requires Node.js 22 or newer.
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 89 unit tests
+npm test           # 91 unit tests
 npx playwright test  # end-to-end, against the live testnet, no wallet needed
-cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 49 contract tests
+cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 54 contract tests
 ```
 
 Testnet scripts use throwaway keys in `.keys/` (git-ignored). The first run prints an address to fund from the [faucet](https://dashboard.qorechain.io/faucet).

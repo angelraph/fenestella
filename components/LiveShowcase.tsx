@@ -24,6 +24,7 @@ export interface ShowcaseData {
   unitByFile: { name: string; n: number }[];
   contractTests: number;
   browserTests: number;
+  invariants: number;
   contractBySuite: { name: string; n: number }[];
   radar: RadarCard[];
   feed: FeedItem[];
@@ -319,8 +320,9 @@ function buildSlides(d: ShowcaseData): Slide[] {
             </div>
           </div>
           <p className="faint">
-            Plus {d.browserTests} browser tests that drive the site against the live testnet, phone screens included. A check on every push
-            fails if any number on this site drifts from the real runs.
+            The invariant suite checks {d.invariants} rules after every one of thousands of random moves by an owner, a
+            vendor and a thief. Plus {d.browserTests} browser tests that drive the site against the live testnet, phone
+            screens included. A check on every push fails if any number here drifts from the real runs.
           </p>
         </>
       ),
