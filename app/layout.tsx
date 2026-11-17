@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="shell">{children}</main>
           <footer className="site-footer">
             <div className="inner">
-              <span>Fenestella holds no keys. Your wallet signs; the chain enforces.</span>
+              <span>Fenestella never holds your keys. Your wallet signs; the chain enforces.</span>
               <nav aria-label="Footer">
                 <Link href="/docs">Docs</Link>
                 <Link href="/faq">FAQ</Link>

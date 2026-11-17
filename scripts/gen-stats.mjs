@@ -51,6 +51,11 @@ for (const [suite, r] of Object.entries(suites)) {
 }
 if (contractFailed > 0) throw new Error(`${contractFailed} contract tests fail.`);
 
+// Browser tests (Playwright), counted without running them.
+const listed = run("npx", ["playwright", "test", "--list"]);
+const browserTests = Number(listed.match(/Total: (\d+) tests?/)?.[1] ?? NaN);
+if (!Number.isFinite(browserTests)) throw new Error("Could not count the Playwright tests.");
+
 // Attacks in the lab: the entries of ATTACKS in lib/agent/lab.ts.
 const lab = readFileSync("lib/agent/lab.ts", "utf8");
 const block = lab.slice(lab.indexOf("export const ATTACKS"));
@@ -65,6 +70,7 @@ const stats = {
   unitByFile,
   contractTests,
   contractBySuite,
+  browserTests,
   attacks: attacks.length,
   attackIds: attacks,
   contracts,

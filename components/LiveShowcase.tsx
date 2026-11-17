@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LiveFeed, type FeedItem } from "./LiveFeed";
 
 export interface RadarCard {
   network: "mainnet" | "testnet";
@@ -14,13 +15,7 @@ export interface RadarCard {
   exposed: number;
 }
 
-export interface FeedItem {
-  kind: "paid" | "autopay" | "mcp" | "refused";
-  title: string;
-  detail: string;
-  tx: string;
-  at: string;
-}
+export type { FeedItem };
 
 export interface ShowcaseData {
   attacks: number;
@@ -28,13 +23,14 @@ export interface ShowcaseData {
   unitTests: number;
   unitByFile: { name: string; n: number }[];
   contractTests: number;
+  browserTests: number;
   contractBySuite: { name: string; n: number }[];
   radar: RadarCard[];
   feed: FeedItem[];
   mcpTools: number;
 }
 
-const SLIDE_MS = 6500;
+const SLIDE_MS = 4200;
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -72,16 +68,6 @@ function CountUp({ to, run, decimals = 0, ms = 1100 }: { to: number; run: boolea
   return <>{v.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</>;
 }
 
-function ago(iso: string, now: number) {
-  const s = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
-  if (s < 90) return "just now";
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} min ago`;
-  const h = Math.round(m / 60);
-  if (h < 36) return `${h} h ago`;
-  return `${Math.round(h / 24)} days ago`;
-}
-
 function Bars({ items, run }: { items: { name: string; n: number }[]; run: boolean }) {
   const max = Math.max(...items.map((i) => i.n), 1);
   return (
@@ -104,38 +90,59 @@ export function LiveShowcase({ data }: { data: ShowcaseData }) {
   const slides = buildSlides(data);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-  const drag = useRef<{ x: number; t: number } | null>(null);
+  const drag = useRef<{ x: number; y: number; t: number; locked: boolean | null } | null>(null);
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
   const n = slides.length;
 
   const go = useCallback((i: number) => setIndex(((i % n) + n) % n), [n]);
 
   useEffect(() => {
-    if (paused || reduced) return;
+    if (paused || reduced || dragging) return;
     const t = setTimeout(() => go(index + 1), SLIDE_MS);
     return () => clearTimeout(t);
-  }, [index, paused, reduced, go]);
+  }, [index, paused, reduced, dragging, go]);
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(t);
-  }, []);
-
+  // The track follows the finger; a quick flick or a drag past a fifth of the width turns the page.
   const onPointerDown = (e: React.PointerEvent) => {
-    drag.current = { x: e.clientX, t: Date.now() };
+    if ((e.target as HTMLElement).closest("a,button")) return;
+    drag.current = { x: e.clientX, y: e.clientY, t: performance.now(), locked: null };
   };
-  const onPointerUp = (e: React.PointerEvent) => {
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const mx = e.clientX - d.x;
+    const my = e.clientY - d.y;
+    if (d.locked === null && Math.abs(mx) + Math.abs(my) > 8) {
+      d.locked = Math.abs(mx) > Math.abs(my);
+      if (d.locked) {
+        setDragging(true);
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      }
+    }
+    if (d.locked) {
+      const edge = (index === 0 && mx > 0) || (index === n - 1 && mx < 0);
+      setDx(edge ? mx * 0.35 : mx);
+    }
+  };
+  const endDrag = (e: React.PointerEvent) => {
     const d = drag.current;
     drag.current = null;
-    if (!d) return;
-    const dx = e.clientX - d.x;
-    if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
+    if (!d || !d.locked) return;
+    const mx = e.clientX - d.x;
+    const width = stageRef.current?.clientWidth ?? 600;
+    const fast = Math.abs(mx) / Math.max(1, performance.now() - d.t) > 0.45;
+    setDragging(false);
+    setDx(0);
+    if (Math.abs(mx) > width / 5 || (fast && Math.abs(mx) > 30)) go(index + (mx < 0 ? 1 : -1));
   };
 
   return (
     <div className="lv">
       <div
-        className="lv-stage"
+        ref={stageRef}
+        className={`lv-stage ${dragging ? "is-dragging" : ""}`}
         role="region"
         aria-roledescription="carousel"
         aria-label="What Fenestella has proven, live"
@@ -149,9 +156,11 @@ export function LiveShowcase({ data }: { data: ShowcaseData }) {
           if (e.key === "ArrowLeft") go(index - 1);
         }}
         onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
-        <div className="lv-track" style={{ transform: `translateX(-${index * 100}%)` }}>
+        <div className="lv-track" style={{ transform: `translateX(calc(${-index * 100}% + ${dx}px))` }}>
           {slides.map((s, i) => (
             <article
               key={s.key}
@@ -190,33 +199,7 @@ export function LiveShowcase({ data }: { data: ShowcaseData }) {
         </div>
       </div>
 
-      <aside className="lv-feed" aria-label="Latest on chain">
-        <div className="lv-feed-head">
-          <span className="lv-live" aria-hidden="true" />
-          <span>Latest on testnet</span>
-        </div>
-        {data.feed.length === 0 ? (
-          <p className="faint">The chain did not answer just now. Every receipt is also linked in the README.</p>
-        ) : (
-          <ol className="lv-feed-list">
-            {data.feed.map((f, i) => (
-              <li key={f.tx} className={`lv-feed-item k-${f.kind}`} style={{ animationDelay: `${i * 90}ms` }}>
-                <span className="lv-feed-dot" aria-hidden="true" />
-                <div>
-                  <div className="lv-feed-title">{f.title}</div>
-                  <div className="lv-feed-detail">{f.detail}</div>
-                  <div className="lv-feed-meta">
-                    <span suppressHydrationWarning>{ago(f.at, now)}</span> ·{" "}
-                    <Link href={`/tx/${f.tx}`} className="mono">
-                      {f.tx.slice(0, 8)}…
-                    </Link>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </aside>
+      <LiveFeed initial={data.feed} />
     </div>
   );
 }
@@ -335,6 +318,10 @@ function buildSlides(d: ShowcaseData): Slide[] {
               <Bars items={d.unitByFile} run={on} />
             </div>
           </div>
+          <p className="faint">
+            Plus {d.browserTests} browser tests that drive the site against the live testnet, phone screens included. A check on every push
+            fails if any number on this site drifts from the real runs.
+          </p>
         </>
       ),
     },

@@ -85,6 +85,7 @@ export default async function Home() {
     unitByFile: byDesc(stats.unitByFile),
     contractTests: stats.contractTests,
     contractBySuite: byDesc(stats.contractBySuite),
+    browserTests: stats.browserTests,
     radar: [mainnet, testnet].filter((r): r is RadarTotals => !!r).map(radarCard),
     feed,
     mcpTools: 8,

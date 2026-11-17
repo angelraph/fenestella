@@ -49,6 +49,58 @@ const ATTACK_WORDS: Record<string, string> = {
   "pay a thief": "tried to pay a bill a thief posted",
 };
 
+export interface Attempt {
+  tried: string;
+  /** Who refused it; "nobody" means it went through, and the log says so. */
+  by: "the chain" | "the vault" | "nobody";
+  reason: string;
+  tx: string;
+  at: string;
+}
+
+const TRIED: Record<string, string> = {
+  drain: "Drain the owner's account with the stolen agent key",
+  "plain transfer": "Drain the owner's account with the stolen agent key",
+  "approve itself": "Make the vault trust the attacker as a payee",
+  "pay a thief": "Pay a bill the attacker posted to the owner",
+};
+
+/** The chain's own words, cut at a word boundary when long. */
+function clip(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), max - 20)).replace(/[\s,;:(]+$/, "")}…`;
+}
+
+/** Every attack attempt the relayer broadcast, newest first, with the chain's own reason for refusing it. */
+export async function loadAttempts(limit = 30): Promise<Attempt[]> {
+  try {
+    const cachedFetch = ((url: string) => fetch(url, { next: { revalidate: REVALIDATE } })) as typeof fetch;
+    const txs = await listTxsBySender(NETWORKS.testnet.rest, RELAYER, 100, cachedFetch);
+    const out: Attempt[] = [];
+    for (const t of txs) {
+      const m = t.memo.match(/stolen agent key, (.+)$/);
+      if (!m) continue;
+      const failed = t.code !== 0 ? t.rawLog || `refused with code ${t.code}` : executionFailures(t)[0]?.attributes.reason;
+      out.push({
+        tried: TRIED[m[1]] ?? m[1],
+        by: !failed ? "nobody" : /revert/i.test(failed) ? "the vault" : "the chain",
+        reason: !failed
+          ? "It went through."
+          : /revert/i.test(failed)
+            ? "The chain let the call through; the vault reverted it, so nothing moved."
+            : clip(failed, 170),
+        tx: t.hash,
+        at: t.timestamp,
+      });
+      if (out.length >= limit) break;
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 /** The newest agent payments and refused attacks, as the chain recorded them. */
 export async function loadActivity(limit = 10): Promise<Activity[]> {
   try {

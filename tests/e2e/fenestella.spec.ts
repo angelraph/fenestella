@@ -33,6 +33,14 @@ test("the landing page shows live proof that slides, with numbers from the real 
   await expect(page.locator(".proof")).toContainText(String(stats.unitTests));
 });
 
+test("the attack lab publishes every recorded attempt, with the chain's reason and a receipt", async ({ page }) => {
+  await page.goto("/lab#log");
+  const items = page.locator("#log .log-item");
+  await expect(items.first()).toBeVisible();
+  await expect(items.first().locator(".log-by")).toHaveText(/Stopped by the (chain|vault)|Got through/);
+  await expect(items.first().getByRole("link", { name: /receipt/ })).toHaveAttribute("href", /^\/tx\/[0-9A-F]{64}$/);
+});
+
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
 
@@ -47,6 +55,10 @@ test.describe("on a phone", () => {
     for (const label of ["Console", "Agent", "Attack lab", "Radar", "For dApps", "Docs", "FAQ", "Security"]) {
       await expect(panel.getByRole("link", { name: new RegExp(`^${label}`) })).toBeVisible();
     }
+    // The wallet comes last, under every page.
+    const security = await panel.getByRole("link", { name: /^Security/ }).boundingBox();
+    const wallet = await panel.getByRole("button", { name: "Connect wallet" }).boundingBox();
+    expect(wallet!.y).toBeGreaterThan(security!.y);
     await panel.getByRole("link", { name: /^Attack lab/ }).click();
     await expect(page).toHaveURL(/\/lab$/);
     await expect(panel).toBeHidden();

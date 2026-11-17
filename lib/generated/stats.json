@@ -16,6 +16,7 @@
     "BillsTest": 9,
     "ReceiptsTest": 12
   },
+  "browserTests": 16,
   "attacks": 13,
   "attackIds": [
     "classical-send",

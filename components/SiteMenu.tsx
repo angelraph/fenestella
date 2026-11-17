@@ -64,9 +64,6 @@ export function SiteMenu() {
         </span>
       </button>
       <div id="site-menu-panel" ref={panel} className={`menu-panel ${open ? "open" : ""}`} hidden={!open}>
-        <div className="menu-wallet">
-          <HeaderWallet />
-        </div>
         <nav aria-label="Pages">
           {NAV.map((n, i) => {
             const here = n.href === "/" ? path === "/" : path.startsWith(n.href);
@@ -78,6 +75,9 @@ export function SiteMenu() {
             );
           })}
         </nav>
+        <div className="menu-wallet" style={{ animationDelay: `${40 + NAV.length * 35}ms` }}>
+          <HeaderWallet />
+        </div>
       </div>
     </div>
   );
