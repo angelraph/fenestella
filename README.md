@@ -192,7 +192,7 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 ## How it works
 
 ### The answer
-[`lib/exposure.ts`](lib/exposure.ts) is a pure function from chain state to a plain-language answer, with five outcomes and 43 unit tests:
+[`lib/exposure.ts`](lib/exposure.ts) is a pure function from chain state to a plain-language answer, with five outcomes and 18 unit tests:
 
 | Level | Meaning |
 | --- | --- |
@@ -224,7 +224,7 @@ It also says what people miss: the window's cap counts native QOR only, a token 
 Mandates go from the owner to the agent, sealed and anchored with the owner's post-quantum key. Reports come back: after every payment the agent signs a report with its own on-chain identity (an account derived from its master secret, ML-DSA-87 registered) using QoreSign, seals it with QoreSeal to the owner's ML-KEM-1024 key from the chain's registry, and posts it to [`AgentReports`](contracts/src/AgentReports.sol), an emit-only mailbox. The owner's browser opens each report and verifies its signature against the agent's key on chain ([`lib/agent/reports.ts`](lib/agent/reports.ts), [`components/AgentInbox.tsx`](components/AgentInbox.tsx)).
 
 ### Rules in plain English
-The owner can type the rules ("pay Northwind, at most 1 QOR a bill, autopay for a month"). The AI drafts limits, payees and autopay; [`lib/agent/policy.ts`](lib/agent/policy.ts) checks the draft (10 tests): an unidentifiable payee is left out, a known payee with a changed address is refused, amounts are capped, autopay stays inside the limits. The owner reviews and signs; nothing is signed for them.
+The owner can type the rules ("pay Northwind, at most 1 QOR a bill, autopay for a month"). The AI drafts limits, payees and autopay; [`lib/agent/policy.ts`](lib/agent/policy.ts) checks the draft (9 tests): an unidentifiable payee is left out, a known payee with a changed address is refused, amounts are capped, autopay stays inside the limits. The owner reviews and signs; nothing is signed for them.
 
 ### Autopay: the agent acts on its own
 - **A standing permission, signed on chain.** The owner signs one transaction: a 1 uqor transfer to itself whose memo reads `fenestella-autopay:v1:on:<payee>:<max per bill>:<until>`. It is hybrid-signed, so only the owner's post-quantum key can write it, and QoreX shows the memo before signing. Turning it off is another memo; the newest one wins; it lasts at most 90 days. Nothing is stored on a server: the agent reads it from the chain every round ([`lib/agent/autopay.ts`](lib/agent/autopay.ts), 16 tests).
