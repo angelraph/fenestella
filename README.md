@@ -97,7 +97,7 @@ Each link opens Fenestella's receipt page, which reads the transaction from the 
 | Pay the same bill twice | **The vault** (`AlreadyPaid`) | simulated |
 | Phishing invoice, prompt injection | **The AI** (refused after checking the chain) | none needed |
 
-**Your own AI agent over MCP, live** (17 November 2026, [`scripts/spike-mcp.ts`](scripts/spike-mcp.ts) through a real MCP client): the owner linked the MCP server's key on the vault leash ([82A68CEA…](https://fenestella.vercel.app/tx/82A68CEA3D7672112D817073E9CDD461CDDD2BF57B76E3BC819049EFC3581A64)); the agent signed `payBill` on its own machine and Fenestella's relayer broadcast it: 0.15 QOR paid from the vault ([1A285C63…](https://fenestella.vercel.app/tx/1A285C635AB301D9CEF0270A44E42ABD3880018FF10696895B8CCAFD23F6D4B1)). Asked to pay a bill from a payee the owner never approved, it was refused (`PayeeNotApproved`) before any fee was spent.
+**Your own AI agent over MCP, live** (17 November 2026, [`scripts/spike-mcp.ts`](scripts/spike-mcp.ts) through a real MCP client): the owner linked the MCP server's key on the vault leash ([82A68CEA…](https://fenestella.vercel.app/tx/82A68CEA3D7672112D817073E9CDD461CDDD2BF57B76E3BC819049EFC3581A64)); the agent signed `payBill` on its own machine and Fenestella's relayer broadcast it: 0.15 QOR paid from the vault ([1A285C63…](https://fenestella.vercel.app/tx/1A285C635AB301D9CEF0270A44E42ABD3880018FF10696895B8CCAFD23F6D4B1)), and again through the production site ([70F7E7E8…](https://fenestella.vercel.app/tx/70F7E7E8E86E5C41BDBC0C6584F7BE5BFD67A0C64EE3E201C2317C61D05A941D)). Asked to pay a bill from a payee the owner never approved, it was refused (`PayeeNotApproved`) before any fee was spent.
 
 **Two-way messages, live:** after an autopay payment ([D0072…](https://fenestella.vercel.app/tx/D007284BED7C00B5F2C8734D726091C26A72C0E42D8C423E54B71B23BEA44408)) the agent posted a report ([0x5886c0fb…](https://fenestella.vercel.app/tx/0x5886c0fb740569803b2d62eb8f5ec9b2395c88462757ec8646aba6be7cdf2c79)): signed by its on-chain identity `qor19kdfkf3lrmyt5klerx6jhfgsxde87je0vqvs72` (hybrid ML-DSA-87, verified against the key registered on chain) and sealed to the owner's published ML-KEM-1024 key ([C358F3EA…](https://fenestella.vercel.app/tx/C358F3EAA433A00F4AC285BCE5B0AAD6B58B81430DD93F98D8F81992E72E4DCB)). The owner opened it; another account's keys could not.
 
@@ -260,7 +260,7 @@ Requires Node.js 22 or newer.
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 82 unit tests
+npm test           # 86 unit tests
 npx playwright test  # end-to-end, against the live testnet, no wallet needed
 cd contracts && forge install foundry-rs/forge-std --no-git && forge test   # 49 contract tests
 ```
