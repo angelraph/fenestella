@@ -1,20 +1,20 @@
 {
   "network": "mainnet",
   "chainId": "qorechain-vladi",
-  "scannedAt": "2026-11-17T08:47:07.143Z",
-  "durationMs": 6870,
-  "accounts": 14721,
+  "scannedAt": "2026-11-17T21:40:39.551Z",
+  "durationMs": 2144,
+  "accounts": 14722,
   "notExposedYet": 14485,
-  "exposed": 236,
-  "scanned": 236,
+  "exposed": 237,
+  "scanned": 237,
   "levels": {
-    "sealed": 228,
+    "sealed": 229,
     "scoped": 0,
     "open": 0,
     "takeover": 8,
     "unknown": 0
   },
-  "pqcRegistered": 228,
+  "pqcRegistered": 229,
   "possessionProven": 22,
   "kemKeys": 0,
   "liveWindows": 0,
@@ -22,7 +22,7 @@
   "failed": 0,
   "valueAtRiskUqor": "59995281",
   "valueBehindOpenWindowsUqor": "0",
-  "valueSealedUqor": "1452186860082979",
+  "valueSealedUqor": "1452196737982457",
   "history": [
     {
       "at": "2026-11-16T21:52:11.243Z",
@@ -53,6 +53,18 @@
       "exposed": 236,
       "levels": {
         "sealed": 228,
+        "scoped": 0,
+        "open": 0,
+        "takeover": 8,
+        "unknown": 0
+      },
+      "valueAtRiskUqor": "59995281"
+    },
+    {
+      "at": "2026-11-17T21:40:39.551Z",
+      "exposed": 237,
+      "levels": {
+        "sealed": 229,
         "scoped": 0,
         "open": 0,
         "takeover": 8,
