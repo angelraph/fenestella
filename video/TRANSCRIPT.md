@@ -1,47 +1,29 @@
-# Fenestella demo video: transcript
+# Fenestella demo: transcript
 
-Voice: Microsoft neural voice "Andrew" (edge-tts). Length: 2 minutes 55 seconds.
+Length 2:49. Narration by Microsoft Edge neural voice "Andrew".
 
-## Intro
+If someone stole your wallet key tonight, what could they actually take? On QoreChain, only what your post-quantum key left open. Fenestella shows you that opening, shrinks it, and lets an AI agent work inside it without ever being able to rob you.
 
-Fenestella. On QoreChain, a stolen classical key can only reach as far as the window your post-quantum key leaves open. Fenestella shows you that window, shrinks it, and lets agents work safely inside it.
+Everything here is live. The home page reads the chain while you watch: attacks refused, the agent's latest payments, and test counts taken straight from the real runs.
 
-## 01. The console
+Paste any address. In one sentence, Fenestella tells you what a leaked classical key could do right now. This account is sealed: post-quantum key registered, no window open. So the answer is nothing.
 
-Start on the console. Paste any address, on testnet or mainnet. Every account is in one of four states: sealed, scoped, wide open, or the dangerous one. No post-quantum key yet, so anyone holding the classical key can register theirs first, and take the account.
+Connect a wallet, and open a window cut down to one contract, a few transactions and a small cap. Your post-quantum key signs it, the chain enforces every bound, and one click closes it again.
 
-## 02. See the truth
+Now the agent. Its key is linked with one permission: call one function of your vault. The money lives in that vault, and only your post-quantum signature can approve a payee or set the limits.
 
-This is a fresh testnet account. In one sentence, Fenestella answers the question that matters: if this key leaked right now, what could an attacker do? Here, nothing. Below are the facts it read from the chain: the ML-DSA-87 key and its proof of possession, the key type, the window, and the balance.
+A phishing invoice arrives: new wallet, pay now. The AI checks the chain with its own tools, finds nothing to match, and refuses. The genuine invoice matches a real bill, so it drafts the payment.
 
-## 03. Every wallet, honestly
+You seal the order to the agent, and sign its fingerprint with your post-quantum key. The agent proves it came from you, asks its AI for a second opinion, and pays from the vault.
 
-Connect wallet finds every wallet in the browser, and says which ones can sign. Here we use the QoreChain Dashboard wallet. Its phrase stays in this tab, and Fenestella checks it against the chain before it signs anything.
+Or sign one standing permission, and it pays that payee by itself, inside your limits. After every payment it reports back, signed with its own post-quantum key and sealed so only you can read it.
 
-## 04. Open a fenestella
+And if the agent's key ever leaks? One red button. A single signed transaction revokes the agent and freezes the vault. Nothing has to move, and the agent's whole record stays on the page, with receipts.
 
-Now open a fenestella. Pick a preset, name the one contract you need, and set the count, the cap and the time. The wallet signs with both keys, and the chain enforces every bound. The answer changes: a leaked key could now call only that contract, briefly. One click closes it again.
+Now play the thief. The attack lab throws thirteen real attacks at it: stolen keys, forged signatures, phishing, prompt injection. Every one is refused. And every attempt anyone makes is published, failures and all.
 
-## 05. The bill-paying agent
+The radar reads every account on QoreChain every six hours, and shows how many a quantum attacker could take today. Totals only, never an address. And one click seals yours.
 
-For the agents track, meet the bill payer. It gets its own key, linked with one permission and a spending rule the chain enforces: only Bills dot pay, at most one QOR a payment, and three a day. A vendor posts a bill.
+Any AI app can run the agent too. One command, and Claude can check accounts, ask you for a window, and pay approved bills, while the chain still refuses everything else.
 
-## 06. The agent's AI
-
-The agent has an AI brain. Paste the invoice you got. This one is phishing: a new wallet, five QOR, pay within the hour. The AI checks the chain with its own tools, finds no bill to match, and refuses, saying why. The genuine invoice matches the bill and the payee, so it drafts the mandate.
-
-## 07. A sealed, signed mandate
-
-The mandate is sealed to the agent with ML-KEM-1024, and you sign its fingerprint on chain with your post-quantum key. The agent proves it is yours, checks the bill, asks its AI for a second opinion, and pays, with no window open on your account.
-
-## 08. Now try to break it
-
-Now steal the agent's key, and try to drain the account. No mandate, no checks. The chain refuses it: per-transaction limit exceeded. The AI can be fooled. The leash cannot.
-
-## 09. For builders
-
-Builders get one call: request window. Your app asks for exactly what it needs, the user sees your real address and the limits in plain words, and approves in their own wallet. The chain grants exactly that, nothing wider.
-
-## Outro
-
-Every result you saw is a real testnet transaction, linked in the repository, with a threat model and a public audit. Fenestella. See how far your key reaches, and keep it small.
+Every result you saw is a real testnet transaction, backed by a threat model, two audits and the tests to prove it. Fenestella. See how far your key reaches, and keep it small.

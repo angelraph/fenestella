@@ -340,6 +340,38 @@ async function main() {
     await hold(2.4);
   });
 
+  // Re-recording the stop scene alone: connect, unpause and relink off camera, so there is something to stop.
+  if (only.has("stop") && !only.has("autopay")) {
+    await page.goto(SITE + "/", { waitUntil: "networkidle" });
+    await page.locator(".header-wallet-desktop button").filter({ hasText: "Connect wallet" }).click();
+    await page.locator(".wallet-row", { hasText: "QoreChain Dashboard wallet" }).click();
+    await page.locator("#dash-addr").fill(acct.cosmos);
+    await page.locator("#dash-phrase").fill(mnemonic);
+    await page.getByRole("button", { name: "Check and connect" }).click();
+    await page.waitForURL(/\/account\//);
+    await page.locator(".site-nav a", { hasText: "Agent" }).click();
+    await page.locator("#stop").waitFor();
+    await page.locator(".agent-step").nth(0).locator("button:has-text('Link the agent'), .pill.active").first().waitFor();
+    const unpause = page.getByRole("button", { name: "Unpause the vault" });
+    if (await unpause.isVisible()) {
+      await unpause.click();
+      await page.locator("#stop .stop-head p", { hasText: "vault active" }).waitFor();
+    }
+    const link = page.getByRole("button", { name: "Link the agent" });
+    if (await link.isVisible()) {
+      await link.click();
+      await page.locator(".agent-step").nth(0).locator(".pill.active").waitFor();
+    }
+    await page.locator("#stop .stop-btn").waitFor();
+    // Leave and come back in-app, so the setup's own step lines are gone from the card.
+    await page.locator(".site-nav a", { hasText: "Radar" }).click();
+    await page.locator(".radar-stat").first().waitFor();
+    await page.locator(".site-nav a", { hasText: "Agent" }).click();
+    await page.locator("#stop .stop-btn").waitFor();
+    await page.waitForTimeout(2500);
+    console.log("  stop setup: relinked and unpaused");
+  }
+
   await scene("stop", async () => {
     await scrollTo(page.locator("#stop"), 1000, 90);
     await hover(page.locator("#stop .stop-head p"), 600);
