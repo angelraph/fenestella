@@ -106,6 +106,12 @@ export function createAbstractAccountMessage(owner: string): ChainMessage {
   return msg.abstractaccount.createAbstractAccount({ owner, accountType: "session_based" }) as ChainMessage;
 }
 
+/** Owner-signed: cut any linked key off at once, whatever its scheme. */
+export function revokeKeyMessage(owner: string, scheme: string, pubkeyHex: string): ChainMessage {
+  const hex = (pubkeyHex.startsWith("0x") ? pubkeyHex : `0x${pubkeyHex}`) as Hex;
+  return revokeAuthenticatorMsg({ owner, scheme: scheme === "ed25519" ? "ed25519" : "secp256k1", pubkey: hexToBytes(hex) }) as ChainMessage;
+}
+
 /** Owner-signed: cut the agent off at once. */
 export function revokeAgentMessage(owner: string, agentEvmAddress: string): ChainMessage {
   const pubkey = hexToBytes(agentEvmAddress as Hex);

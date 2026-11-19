@@ -20,7 +20,7 @@
   },
   "fuzzTests": 6,
   "invariants": 6,
-  "browserTests": 16,
+  "browserTests": 17,
   "attacks": 13,
   "attackIds": [
     "classical-send",

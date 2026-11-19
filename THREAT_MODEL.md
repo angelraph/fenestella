@@ -79,6 +79,14 @@ The agent's AI (OpenAI `gpt-5-mini` on the live site; Claude when configured) re
 | Write a fake report | Reports carry the agent identity's hybrid ML-DSA-87 signature; the owner's browser verifies it against the key registered on chain. **Verified live.** |
 | Use the mailbox to move money | `AgentReports` only emits; it holds and stores nothing and refuses value. |
 
+### A3c. The owner learns the agent's key leaked
+
+| They need | What happens |
+| --- | --- |
+| Cut the agent off without moving funds | **Stop the agent now**: one owner-signed transaction revokes every linked key and closes any open window. The agent's authority is its own authenticator, so revoking it leaves the owner's keys and funds where they are. **Verified live.** |
+| Freeze spending | The same button pauses the vault with the owner's ML-DSA-87 signature (`pqcVerify`), so nothing can be paid even by a key linked later. The balance stays in the vault. **Verified live.** |
+| See what happened | The agent's record on the account page lists every payment, refusal and permission change from the chain, each with a receipt. |
+
 ### A4. Someone forges or alters a mandate
 
 | They try | What happens | How we know |

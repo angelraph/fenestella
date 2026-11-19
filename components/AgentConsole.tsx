@@ -5,6 +5,7 @@ import { fetchAccount, type AccountAnswer } from "@/lib/client";
 import { qorToUqor, shortAddress, unixToDate, uqorToQor } from "@/lib/format";
 import { NETWORKS } from "@/lib/networks";
 import type { Signer } from "@/lib/signer/types";
+import { AgentHistory } from "./AgentHistory";
 import { AgentInbox } from "./AgentInbox";
 import { AiReview, type Review } from "./AiReview";
 import { ConnectPanel, useWallet } from "./Wallet";
@@ -72,7 +73,7 @@ function Steps({ steps }: { steps: Step[] }) {
   );
 }
 
-type Busy = null | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai" | "move" | "fund" | "rules" | "autopay" | "autopay-run" | "policy";
+type Busy = null | "stop" | "link" | "revoke" | "bill" | "mandate" | "rogue" | "ai" | "move" | "fund" | "rules" | "autopay" | "autopay-run" | "policy";
 
 interface AutopayView {
   payee: string;
@@ -115,6 +116,7 @@ export function AgentConsole() {
   const [policyText, setPolicyText] = useState("Pay Northwind Hosting, at most 1 QOR a bill and 3 QOR a day. Pay their bills automatically for the next 30 days, up to 0.5 QOR each.");
   const [policy, setPolicy] = useState<{ model: string; summary: string; proposal: { payees: { name: string; address: string }[]; perPaymentQor: string; perDayQor: string; autopay: { payee: string; payeeName: string; maxQor: string; days: number } | null; notes: string[] } } | null>(null);
   const [extraPayees, setExtraPayees] = useState<string[]>([]);
+  const [stopSteps, setStopSteps] = useState<Step[] | null>(null);
 
   const load = useCallback(async () => {
     if (!signer) return;
@@ -344,6 +346,72 @@ export function AgentConsole() {
       await load();
     });
 
+  /**
+   * The stop button: in one owner-signed transaction, revoke every linked key
+   * and close any open window. With a wallet that can sign ML-DSA-87 in this
+   * tab, also pause the vault, so not even a key linked later can pay from it.
+   */
+  const stopAll = () =>
+    guard("stop", async () => {
+      if (!signer || !account) return;
+      const t = account.truth;
+      const nowUnix = BigInt(Math.floor(Date.now() / 1000));
+      const live = t.abstractAccount.authenticators.filter((a) => !a.revoked && BigInt(a.expiryUnix) > nowUnix);
+      const [{ revokeKeyMessage }, { closeWindowMessage }] = await Promise.all([import("@/lib/agent/leash"), import("@/lib/messages")]);
+      const msgs = [
+        ...live.map((a) => revokeKeyMessage(signer.address, a.scheme, a.pubkeyHex)),
+        ...(t.window?.live ? [closeWindowMessage(signer.address)] : []),
+      ];
+      const steps: Step[] = [];
+      setStopSteps(steps);
+      if (msgs.length > 0) {
+        const r = await signer.signAndBroadcast(msgs, "fenestella: stop everything");
+        steps.push({
+          ok: true,
+          text: `One transaction, signed with your post-quantum key: ${live.length ? `revoked ${live.length === 1 ? "the linked key" : `all ${live.length} linked keys`}` : "no linked keys to revoke"}${t.window?.live ? " and closed the open window" : ""}. From this block on, no agent key can act for this account.`,
+          tx: r.txHash,
+        });
+      } else {
+        steps.push({ ok: true, text: "No linked key and no open window: nothing on the account could act for you." });
+      }
+      setStopSteps([...steps]);
+      const k = keyed(signer);
+      const vs = info?.vaultState;
+      if (k && vs && !vs.paused) {
+        const [{ pqcSign }, vault, { bytesToHex, hexToBytes }] = await Promise.all([import("@qorechain/sdk"), import("@/lib/agent/vault"), import("viem")]);
+        const admin = { action: "pause" as const, paused: true };
+        const signature = bytesToHex(
+          pqcSign(k.account.pqc.secretKey, hexToBytes(vault.adminMessage({ chainId: net.evmChainId, owner: k.evmAddress.toLowerCase() as `0x${string}`, nonce: BigInt(vs.nonce), admin }))),
+        );
+        const res = await fetch("/api/vault", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "admin", ownerEvm: k.evmAddress, items: [{ admin, signature }] }) });
+        const body = (await res.json()) as { steps?: Step[]; error?: string };
+        if (!res.ok) throw new Error(body.error ?? "The vault did not accept the pause.");
+        steps.push(...(body.steps ?? []));
+      } else if (vs && !vs.paused) {
+        steps.push({ ok: true, text: "Your vault is not paused: pausing it needs your ML-DSA-87 signature in this tab (the QoreChain Dashboard wallet). With no key linked, nothing can pay from it anyway." });
+      }
+      setStopSteps([...steps]);
+      await new Promise((res) => setTimeout(res, 2500));
+      await load();
+    });
+
+  const resumeVault = () =>
+    guard("stop", async () => {
+      const k = keyed(signer);
+      const vs = info?.vaultState;
+      if (!k || !vs) throw new Error("Unpausing signs with your ML-DSA-87 key in this tab, so it needs the QoreChain Dashboard wallet (testnet).");
+      const [{ pqcSign }, vault, { bytesToHex, hexToBytes }] = await Promise.all([import("@qorechain/sdk"), import("@/lib/agent/vault"), import("viem")]);
+      const admin = { action: "pause" as const, paused: false };
+      const signature = bytesToHex(
+        pqcSign(k.account.pqc.secretKey, hexToBytes(vault.adminMessage({ chainId: net.evmChainId, owner: k.evmAddress.toLowerCase() as `0x${string}`, nonce: BigInt(vs.nonce), admin }))),
+      );
+      const res = await fetch("/api/vault", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "admin", ownerEvm: k.evmAddress, items: [{ admin, signature }] }) });
+      const body = (await res.json()) as { steps?: Step[]; error?: string };
+      if (!res.ok) throw new Error(body.error ?? "The vault did not accept it.");
+      setStopSteps(body.steps ?? []);
+      await load();
+    });
+
   const askBill = () =>
     guard("bill", async () => {
       if (!account) return;
@@ -441,6 +509,14 @@ export function AgentConsole() {
         <ConnectPanel network="testnet" />
       </section>
       <DemoAi />
+      <section className="card stack" aria-labelledby="hist-demo-h">
+        <h2 id="hist-demo-h">The demo agent&apos;s record</h2>
+        <p className="faint">
+          What the agent has done for <a href={`/account/${DEMO_OWNER}?network=testnet`}>the demo account</a>, and every
+          permission given or taken back, read from the chain. No wallet needed.
+        </p>
+        <AgentHistory owner={DEMO_OWNER} />
+      </section>
       </>
     );
   }
@@ -452,6 +528,43 @@ export function AgentConsole() {
           {error}
         </div>
       )}
+
+      {account && (() => {
+        const nowUnix = BigInt(Math.floor(Date.now() / 1000));
+        const liveKeys = account.truth.abstractAccount.authenticators.filter((a) => !a.revoked && BigInt(a.expiryUnix) > nowUnix).length;
+        const windowOpen = !!account.truth.window?.live;
+        const paused = !!info?.vaultState?.paused;
+        const armed = liveKeys > 0 || windowOpen;
+        return (
+          <section className={`card stop-card ${armed ? "armed" : "safe"}`} id="stop" aria-labelledby="stop-h">
+            <div className="stop-head">
+              <div>
+                <h2 id="stop-h">{armed ? "Stop everything" : "Nothing can act for this account"}</h2>
+                <p>
+                  {liveKeys} linked {liveKeys === 1 ? "key" : "keys"} · window {windowOpen ? "open" : "closed"} · vault{" "}
+                  {!info?.vaultState ? "…" : paused ? `paused, ${uqorToQor(info.vaultState.balanceUqor)} QOR kept` : `active, ${uqorToQor(info.vaultState.balanceUqor)} QOR`}
+                </p>
+              </div>
+              {armed ? (
+                <button className="btn stop-btn" disabled={!!busy} onClick={stopAll}>
+                  {busy === "stop" ? "Stopping…" : "Stop the agent now"}
+                </button>
+              ) : paused ? (
+                <button className="btn ghost small" disabled={!!busy} onClick={resumeVault}>
+                  {busy === "stop" ? "Signing…" : "Unpause the vault"}
+                </button>
+              ) : null}
+            </div>
+            {armed && (
+              <p className="faint">
+                One transaction, signed with your post-quantum key: every linked key revoked and any open window closed, in
+                the same block. With the Dashboard wallet it also pauses your vault. To start again, link the agent again.
+              </p>
+            )}
+            {stopSteps && <Steps steps={stopSteps} />}
+          </section>
+        );
+      })()}
 
       {ownAgent && (
         <section className="card stack agent-step" id="own-agent" data-done={ownLinked}>
@@ -848,6 +961,14 @@ export function AgentConsole() {
         </div>
         {rogueSteps && <Steps steps={rogueSteps} />}
       </section>
+
+      {account && (
+        <section className="card stack" aria-labelledby="hist-agent-h">
+          <h2 id="hist-agent-h">The agent&apos;s record</h2>
+          <p className="faint">Everything it paid, everything refused, and every permission you gave or took back, from the chain.</p>
+          <AgentHistory key={account.truth.height} owner={signer.address} />
+        </section>
+      )}
 
       {info && (
         <p className="faint">

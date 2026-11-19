@@ -7,6 +7,7 @@ import type { ExposureLevel } from "@/lib/exposure";
 import { blocksToDuration, plural, unixToDate, uqorToQor } from "@/lib/format";
 import { NETWORKS, type NetworkId } from "@/lib/networks";
 import type { AccountTruth, TruthSection } from "@/lib/truth";
+import { AgentHistory } from "./AgentHistory";
 import { Aperture } from "./Aperture";
 import { RulesEditor } from "./RulesEditor";
 import { WindowForm } from "./WindowForm";
@@ -292,6 +293,18 @@ export function AccountConsole({ address, network }: { address: string; network:
 
       <WindowForm truth={t} onChanged={setAnswer} />
       <LinkedKeys answer={answer} onChanged={setAnswer} />
+
+      {t.network === "testnet" && t.abstractAccount.authenticators.length > 0 && (
+        <section className="card stack" aria-labelledby="hist-h">
+          <h2 id="hist-h" style={{ margin: 0 }}>
+            The agent&apos;s record on this account
+          </h2>
+          <p className="faint">
+            Every payment, every refused attempt and every permission given or taken back, read from the chain.
+          </p>
+          <AgentHistory owner={t.address.cosmos} />
+        </section>
+      )}
 
       <p className="faint">
         Read from {t.chainId} at block {Number(t.height).toLocaleString("en-US")} ({t.readAt.replace("T", " ").slice(0, 19)} UTC).

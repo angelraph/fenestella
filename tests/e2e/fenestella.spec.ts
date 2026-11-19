@@ -41,6 +41,14 @@ test("the attack lab publishes every recorded attempt, with the chain's reason a
   await expect(items.first().getByRole("link", { name: /receipt/ })).toHaveAttribute("href", /^\/tx\/[0-9A-F]{64}$/);
 });
 
+test("an account with an agent shows the agent's record from the chain, no wallet needed", async ({ page }) => {
+  await page.goto("/account/qor1072yq0ksuukxkym8d9r0mpr3upz4awf00u5ew7?network=testnet");
+  const hist = page.locator(".hist");
+  await expect(hist.locator(".hist-item").first()).toBeVisible({ timeout: 60_000 });
+  await expect(hist.locator(".hist-sum")).toContainText(/payment/);
+  await expect(hist.locator(".hist-item").first().getByRole("link", { name: "receipt" })).toHaveAttribute("href", /^\/tx\/[0-9A-F]{64}$/);
+});
+
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
 

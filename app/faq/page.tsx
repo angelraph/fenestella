@@ -128,6 +128,18 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     ),
   },
   {
+    q: "If the agent's key leaks, do I have to move all my money?",
+    a: (
+      <>
+        No. The agent never signs with your key: its authority is a separate key the chain can cancel. On the{" "}
+        <Link href="/agent">agent page</Link>, <b>Stop the agent now</b> revokes every linked key and closes any open
+        window in one transaction, and pauses your vault with your post-quantum signature. Your money stays in the vault,
+        frozen, until you unpause it or withdraw. The agent&apos;s record on your account page shows everything it did,
+        with receipts.
+      </>
+    ),
+  },
+  {
     q: "Can I try to break it?",
     a: (
       <>

@@ -33,7 +33,7 @@ The product also uses AI at run time: the bill-paying agent reads invoices with 
 
 ## How the output was checked
 
-- **Types and tests on every change:** `tsc`, the unit tests, `forge test` and the browser tests. As of 17 November 2026: 91 unit tests, 54 contract tests (6 of them fuzz tests, plus an invariant suite that checks 6 rules after thousands of random moves by an owner, a vendor and a thief), and 16 browser tests.
+- **Types and tests on every change:** `tsc`, the unit tests, `forge test` and the browser tests. As of 17 November 2026: 91 unit tests, 54 contract tests (6 of them fuzz tests, plus an invariant suite that checks 6 rules after thousands of random moves by an owner, a vendor and a thief), and 17 browser tests.
 - **Live on testnet:** every claim in the README links to a receipt read from the chain. The attack lab's 13 attacks were run live and every one was refused; the page now publishes every attempt anyone makes.
 - **Numbers that cannot drift:** the counts on the site come from one generated file; a unit test fails if the README disagrees, and a GitHub check fails if the file is stale. This was added after the author caught the home page still showing week-one numbers.
 - **Two QoreChain AI audits** of the contracts; every finding is answered in [AUDIT.md](AUDIT.md). The findings that held up were fixed, and the vault was redeployed after the second.
