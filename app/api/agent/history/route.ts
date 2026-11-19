@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   }
   try {
     const items = await loadOwnerHistory(owner);
-    return NextResponse.json({ items }, { headers: { "cache-control": "public, s-maxage=30, stale-while-revalidate=60" } });
+    return NextResponse.json({ items }, { headers: { "cache-control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "The chain could not be read just now." }, { status: 502 });
   }

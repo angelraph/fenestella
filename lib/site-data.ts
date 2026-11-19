@@ -86,7 +86,8 @@ const short = (a: string) => (a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-4)}
  * windows, standing permissions, signed orders, payments and refusals.
  */
 export async function loadOwnerHistory(owner: string, limit = 40): Promise<HistoryItem[]> {
-  const cachedFetch = ((url: string) => fetch(url, { next: { revalidate: 30 } })) as typeof fetch;
+  // Always fresh: the owner looks at this right after acting, so a cached answer would show a stale record.
+  const cachedFetch = ((url: string) => fetch(url, { cache: "no-store" })) as typeof fetch;
   const rest = NETWORKS.testnet.rest;
   const [own, relayed] = await Promise.all([
     listTxsBySender(rest, owner, 60, cachedFetch).catch(() => []),

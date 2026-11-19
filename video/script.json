@@ -43,6 +43,11 @@
       "text": "Or sign one standing permission, and it pays that payee by itself, inside your limits. After every payment it reports back, signed with its own post-quantum key and sealed so only you can read it."
     },
     {
+      "id": "stop",
+      "title": "One red button",
+      "text": "And if the agent's key ever leaks? One red button. A single signed transaction revokes the agent and freezes the vault. Nothing has to move, and the agent's whole record stays on the page, with receipts."
+    },
+    {
       "id": "lab",
       "title": "Try to rob it",
       "text": "Now play the thief. The attack lab throws thirteen real attacks at it: stolen keys, forged signatures, phishing, prompt injection. Every one is refused. And every attempt anyone makes is published, failures and all."

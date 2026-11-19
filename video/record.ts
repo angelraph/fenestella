@@ -200,172 +200,200 @@ async function main() {
   await page.goto(SITE + "/", { waitUntil: "networkidle" });
   await moveTo(720, 300, 10);
 
-  await scene("landing", async () => {
-    await hold(0.8);
-    await hover(page.locator("h1").first(), 900);
-    await hold(1.6);
-    await hover(page.locator(".lookup-card input").first(), 800);
-    await hold(1.4);
-    await hover(page.locator(".lookup-card .seg").first(), 600);
-    await hold(1.0);
-    await scrollTo(page.locator("#states-h"), 1400, 70);
-    for (const lvl of ["sealed", "scoped", "open", "takeover"]) {
-      await hover(page.locator(`.screen[data-level="${lvl}"]`), 700);
-      await hold(lvl === "takeover" ? 3.4 : 1.25);
-    }
-    await scrollTo(0, 1200);
+  // The home page: the live showcase slides and the on-chain feed.
+  await scene("live", async () => {
+    await hold(0.6);
+    await scrollTo(page.locator("#live-h"), 1300, 40);
+    await hover(page.locator(".lv-stage"), 800);
+    await page.mouse.move(mouse.x + 1, mouse.y); // keep the cursor on the slider without pausing it for long
+    await moveTo(1180, 420, 700);
+    await hold(3.2);
+    await click(page.locator(".lv-stage").getByRole("button", { name: "Next" }), 600);
+    await hold(2.4);
+    await hover(page.locator(".lv-feed-item").first(), 700);
+    await hold(2.6);
+    await scrollTo(0, 1100);
   });
 
   await scene("account", async () => {
     await click(page.locator(".lookup-card input").first());
-    await type(acct.cosmos, 22);
+    await type(acct.cosmos, 18);
     await hold(0.3);
     await click(page.getByRole("button", { name: "Read account" }));
     await rec.waiting(() => page.locator(".exposure .headline").waitFor(), 0.8, 0.2);
     await hold(0.6);
     await hover(page.locator(".exposure .headline"), 800);
-    await hold(4.2);
-    await scrollTo(page.locator(".facts"), 1200, 120);
+    await hold(3.6);
+    await scrollTo(page.locator(".facts"), 1100, 120);
     await hover(page.locator(".fact").nth(0), 600);
-    await hold(1.8);
-    await hover(page.locator(".fact").nth(1), 600);
-    await hold(1.0);
-    await hover(page.locator(".fact").nth(2), 600);
-    await hold(1.0);
+    await hold(1.6);
     await hover(page.locator(".fact").nth(5), 600);
-    await hold(1.6);
+    await hold(1.4);
   });
 
-  await scene("connect", async () => {
-    await scrollTo(0, 900);
-    await click(page.locator(".header-right button").filter({ hasText: "Connect wallet" }));
-    await page.locator(".wallet-row").first().waitFor();
-    await hold(2.0);
-    for (const n of [0, 1, 2]) {
-      const row = page.locator(".wallet-list .wallet-row").nth(n);
-      if (await row.count()) {
-        await hover(row, 450);
-        await hold(0.5);
-      }
-    }
-    const dash = page.locator(".wallet-row", { hasText: "QoreChain Dashboard wallet" });
-    await click(dash);
-    await hold(0.6);
-    await click(page.locator("#dash-addr"));
-    await type(acct.cosmos, 14);
-    await click(page.locator("#dash-phrase"), 500);
-    await page.locator("#dash-phrase").fill(mnemonic);
-    await hold(0.8);
-    await click(page.getByRole("button", { name: "Check and connect" }));
-    await rec.waiting(() => page.locator(".header-right .chip .mono").waitFor(), 0.8, 0.3);
-    await hold(1.6);
-  });
-
+  // Connect the Dashboard wallet; connecting opens the account page, where the window form is.
   await scene("window", async () => {
-    await scrollTo(page.locator("#window-h"), 1200, 90);
+    await scrollTo(0, 800);
+    await click(page.locator(".header-wallet-desktop button").filter({ hasText: "Connect wallet" }));
+    await page.locator(".wallet-row").first().waitFor();
+    await hold(1.0);
+    await click(page.locator(".wallet-row", { hasText: "QoreChain Dashboard wallet" }));
+    await hold(0.4);
+    await click(page.locator("#dash-addr"));
+    await type(acct.cosmos, 10);
+    await click(page.locator("#dash-phrase"), 450);
+    await page.locator("#dash-phrase").fill(mnemonic);
+    await hold(0.4);
+    await click(page.getByRole("button", { name: "Check and connect" }));
+    await rec.waiting(() => page.locator(".header-wallet-desktop .chip .mono").waitFor(), 0.6, 0.3);
+    await page.locator("#window-h").waitFor();
+    await scrollTo(page.locator("#window-h"), 1100, 90);
     await click(page.locator(".preset", { hasText: "One contract" }));
     await click(page.locator("#w-targets"));
-    await type(BILLS, 16);
-    await hold(0.6);
-    await hover(page.locator(".summary").first(), 700);
-    await hold(2.2);
-    await click(page.getByRole("button", { name: /^(Open|Replace) window$/ }));
-    await rec.waiting(() => page.locator(".notice.ok", { hasText: "Open window: done" }).waitFor(), 1.2, 0.4);
-    await hold(0.8);
-    await scrollTo(page.locator(".exposure"), 1100, 110);
-    await hover(page.locator(".exposure .headline"), 700);
-    await hold(3.4);
-    await scrollTo(page.locator("#window-h"), 1000, 90);
-    await click(page.getByRole("button", { name: "Close the open window now" }));
-    await rec.waiting(() => page.locator(".notice.ok", { hasText: "Close window: done" }).waitFor(), 1.0, 0.3);
-    await scrollTo(page.locator(".exposure"), 1000, 110);
+    await type(BILLS, 12);
+    await hold(0.4);
+    await hover(page.locator(".summary").first(), 600);
     await hold(1.6);
+    await click(page.getByRole("button", { name: /^(Open|Replace) window$/ }));
+    await rec.waiting(() => page.locator(".notice.ok", { hasText: "Open window: done" }).waitFor(), 1.0, 0.3);
+    await scrollTo(page.locator(".exposure"), 1000, 110);
+    await hover(page.locator(".exposure .headline"), 600);
+    await hold(2.4);
+    await scrollTo(page.locator("#window-h"), 900, 90);
+    await click(page.getByRole("button", { name: "Close the open window now" }));
+    await rec.waiting(() => page.locator(".notice.ok", { hasText: "Close window: done" }).waitFor(), 0.8, 0.3);
+    await hold(0.8);
   });
 
-  // The agent page: 0 link, 1 bill, 2 the AI, 3 the mandate, 4 the stolen key.
+  // The agent page, in order: 0 leash, 1 vault, 2 bill, 3 AI, 4 mandate, 5 autopay, 6 messages, 7 attacks.
   const step = (n: number) => page.locator(".agent-step").nth(n);
 
-  await scene("agent", async () => {
+  await scene("vault", async () => {
     await scrollTo(0, 700);
     await click(page.locator(".site-nav a", { hasText: "Agent" }));
     await page.getByRole("button", { name: "Link the agent" }).waitFor();
-    await hold(1.4);
     await scrollTo(step(0), 900, 90);
-    await hover(step(0).locator(".summary"), 700);
-    await hold(2.2);
-    await click(page.getByRole("button", { name: "Link the agent" }));
-    await rec.waiting(() => step(0).locator(".pill.active").waitFor(), 1.0, 0.3);
     await hover(step(0).locator(".summary"), 600);
-    await hold(2.0);
-    await scrollTo(step(1), 900, 90);
-    await click(page.getByRole("button", { name: /Ask the vendor/ }));
-    await rec.waiting(() => page.locator(".bill-list li").first().waitFor(), 1.0, 0.3);
     await hold(1.4);
+    await click(page.getByRole("button", { name: "Link the agent" }));
+    await rec.waiting(() => step(0).locator(".pill.active").waitFor(), 0.9, 0.3);
+    await hold(0.8);
+    await scrollTo(step(1), 900, 90);
+    await click(step(1).getByRole("button", { name: /^Put .* QOR in my vault$/ }));
+    await rec.waiting(() => step(1).locator(".steps li").nth(1).waitFor(), 0.9, 0.3);
+    await click(step(1).getByRole("button", { name: "Approve the vendor and sign the limits" }));
+    await rec.waiting(() => step(1).locator(".fact .v", { hasText: "Northwind" }).waitFor(), 1.0, 0.3);
+    await hover(step(1).locator(".facts"), 600);
+    await hold(2.0);
   });
 
   await scene("ai", async () => {
-    await scrollTo(step(2), 1000, 90);
-    const sample = (name: string) => step(2).getByRole("button", { name });
+    await scrollTo(step(2), 900, 90);
+    await click(page.getByRole("button", { name: /Ask the vendor/ }));
+    await rec.waiting(() => step(2).locator(".bill-list li").first().waitFor(), 0.8, 0.3);
+    await scrollTo(step(3), 900, 90);
+    const sample = (name: string) => step(3).getByRole("button", { name });
     await sample("Phishing: new address, urgent").waitFor();
     await click(sample("Phishing: new address, urgent"));
-    await hold(1.2);
-    await hover(step(2).locator("#ai-invoice"), 600);
-    await hold(1.6);
-    await click(step(2).getByRole("button", { name: "Review with the agent's AI" }));
-    await rec.waiting(() => step(2).locator(".ai-result").waitFor(), 1.0, 0.3);
-    await scrollTo(step(2).locator(".ai-result"), 900, 120);
-    await hover(step(2).locator(".ai-decision"), 600);
-    await hold(1.6);
-    await hover(step(2).locator(".ai-result .list.warn li").first(), 600);
-    await hold(2.4);
-    await scrollTo(step(2), 900, 90);
+    await hold(0.8);
+    await click(step(3).getByRole("button", { name: "Review with the agent's AI" }));
+    await rec.waiting(() => step(3).locator(".ai-result").waitFor(), 1.0, 0.3);
+    await scrollTo(step(3).locator(".ai-result"), 800, 120);
+    await hover(step(3).locator(".ai-decision"), 600);
+    await hold(2.2);
+    await scrollTo(step(3), 800, 90);
     await click(sample("Genuine invoice"));
-    await hold(0.6);
-    await click(step(2).getByRole("button", { name: "Review with the agent's AI" }));
-    await rec.waiting(() => step(2).locator('.ai-result[data-decision="draft_mandate"]').waitFor(), 1.0, 0.3);
-    await scrollTo(step(2).locator(".ai-result"), 900, 120);
-    await hover(step(2).locator(".ai-decision"), 600);
+    await hold(0.4);
+    await click(step(3).getByRole("button", { name: "Review with the agent's AI" }));
+    await rec.waiting(() => step(3).locator('.ai-result[data-decision="draft_mandate"]').waitFor(), 1.0, 0.3);
+    await scrollTo(step(3).locator(".ai-result"), 800, 120);
+    await hover(step(3).locator(".ai-decision"), 600);
     await hold(1.6);
-    await click(step(2).getByRole("button", { name: "Use this draft for the mandate" }));
-    await hold(1.4);
+    await click(step(3).getByRole("button", { name: "Use this draft for the mandate" }));
+    await hold(1.0);
   });
 
   await scene("mandate", async () => {
-    await scrollTo(step(3), 900, 90);
-    await hover(step(3).locator(".summary"), 700);
-    await hold(1.6);
+    await scrollTo(step(4), 800, 90);
+    await hover(step(4).locator(".summary").first(), 600);
+    await hold(1.0);
     await click(page.getByRole("button", { name: /Seal, sign and send/ }));
-    const steps = step(3).locator(".steps li");
-    await rec.waiting(() => steps.nth(1).waitFor(), 1.0, 0.3);
-    await hold(1.2);
+    const steps = step(4).locator(".steps li");
+    await rec.waiting(() => steps.nth(1).waitFor(), 0.9, 0.3);
     await rec.waiting(() => steps.filter({ hasText: /^Paid/ }).waitFor(), 0.6, 0.2);
     const n = await steps.count();
     for (let i = 2; i < n; i++) {
-      await hover(steps.nth(i), 450);
-      await hold(i === n - 2 ? 1.8 : 1.0);
+      await hover(steps.nth(i), 380);
+      await hold(i === n - 1 ? 1.4 : 0.7);
     }
-    await hold(0.8);
   });
 
-  await scene("attack", async () => {
-    await scrollTo(step(4), 900, 90);
-    await click(page.getByRole("button", { name: /Play the stolen agent key/ }));
-    const steps = step(4).locator(".steps li");
-    await rec.waiting(() => steps.nth(1).waitFor(), 1.0, 0.2);
-    await hover(steps.nth(1), 700);
-    await hold(4.6);
+  await scene("autopay", async () => {
+    await scrollTo(step(5), 900, 90);
+    await hover(step(5).locator("#ap-max"), 600);
+    await hold(1.2);
+    await click(step(5).getByRole("button", { name: /Turn on autopay/ }));
+    await rec.waiting(() => step(5).locator(".steps li").first().waitFor(), 0.9, 0.3);
+    await hover(step(5).locator(".steps li").first(), 600);
+    await hold(2.6);
+    await scrollTo(step(6), 900, 90);
+    await hold(2.4);
   });
 
-  await scene("dapps", async () => {
+  await scene("stop", async () => {
+    await scrollTo(page.locator("#stop"), 1000, 90);
+    await hover(page.locator("#stop .stop-head p"), 600);
+    await hold(1.4);
+    await click(page.locator("#stop .stop-btn"));
+    await rec.waiting(() => page.locator("#stop .steps li").first().waitFor(), 0.9, 0.3);
+    await rec.waiting(() => page.locator("#stop h2", { hasText: "Nothing can act for this account" }).waitFor(), 0.6, 0.3);
+    await hover(page.locator("#stop .steps li").first(), 600);
+    await hold(2.4);
+    await scrollTo(page.locator("#hist-agent-h"), 1300, 90);
+    await page.locator(".hist-item").first().waitFor();
+    await hover(page.locator(".hist-item").first(), 600);
+    await hold(2.6);
+  });
+
+  await scene("lab", async () => {
     await scrollTo(0, 700);
-    await click(page.locator(".site-nav a", { hasText: "For dApps" }));
-    await page.locator("pre.cli").first().waitFor();
+    await click(page.locator(".site-nav a", { hasText: "Attack lab" }));
+    await page.getByRole("button", { name: "Run every attack" }).waitFor();
+    await hold(1.0);
+    await click(page.getByRole("button", { name: "Run every attack" }));
+    await hold(2.0);
+    await rec.waiting(() => page.locator(".lab-card[data-outcome='refused']").nth(12).waitFor({ timeout: 300_000 }), 2.0, 1.2);
+    await scrollTo(0, 800);
+    await hover(page.locator(".lab-big").first(), 600);
+    await hold(2.2);
+    await scrollTo(page.locator("#log-h"), 1400, 70);
+    await hover(page.locator(".log-item").first(), 600);
+    await hold(2.6);
+  });
+
+  await scene("radar", async () => {
+    await scrollTo(0, 600);
+    await click(page.locator(".site-nav a", { hasText: "Radar" }));
+    await page.locator(".radar-stat").first().waitFor();
+    await hold(1.2);
+    await scrollTo(page.locator(".radar-net").first(), 1100, 90);
+    await hover(page.locator(".radar-stat.danger").first(), 700);
+    await hold(2.4);
+    await hover(page.locator(".radar-stat").nth(2), 600);
+    await hold(1.8);
+    await scrollTo(page.locator("#seal"), 1000, 90);
     await hold(1.6);
-    await scrollTo(page.locator("pre.cli").first(), 1100, 160);
-    await hover(page.locator("pre.cli").first(), 800);
-    await hold(3.0);
-    await hover(page.getByRole("button", { name: "Request a window" }), 800);
-    await hold(3.0);
+  });
+
+  await scene("mcp", async () => {
+    await scrollTo(0, 600);
+    await click(page.locator(".site-nav a", { hasText: "Docs" }));
+    await page.locator("#mcp").waitFor();
+    await scrollTo(page.locator("#mcp"), 1200, 90);
+    await hover(page.locator("#mcp ~ pre.cli").first(), 700);
+    await hold(3.4);
+    await hover(page.locator("#mcp ~ p").nth(1), 600);
+    await hold(2.6);
   });
 
   await scene("outro", async () => {
