@@ -2,7 +2,7 @@
 
 **The small window on a QoreChain account.**
 
-[**▶ Watch the 2:55 demo**](https://x.com/RaphElevator/status/2122256610231763453) · [**Try it live**](https://fenestella.vercel.app) · [**Fest project page**](https://build.qorechain.io/p/fenestella) · MIT
+[**▶ Watch the 2:49 demo**](https://x.com/RaphElevator/status/2123375967976518072) · [**Try it live**](https://fenestella.vercel.app) · [**Fest project page**](https://build.qorechain.io/p/fenestella) · MIT
 
 ![Fenestella home](docs/screens/01-home.jpg)
 

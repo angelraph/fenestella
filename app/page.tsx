@@ -109,8 +109,8 @@ export default async function Home() {
         </p>
         <Lookup />
         <p className="faint">Reading an account needs no wallet and no gas. Works on testnet and mainnet.</p>
-        <a className="btn ghost small" href="https://x.com/RaphElevator/status/2122256610231763453" target="_blank" rel="noreferrer">
-          ▶ Watch the 2:55 demo
+        <a className="btn ghost small" href="https://x.com/RaphElevator/status/2123375967976518072" target="_blank" rel="noreferrer">
+          ▶ Watch the 2:49 demo
         </a>
       </section>
 
