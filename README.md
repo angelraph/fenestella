@@ -50,6 +50,8 @@ No wallet needed for the first four steps. Everything you see is read from the l
 
 QoreX works for reading accounts and for windows. The QoreX browser extension is mainnet only; on testnet use the QoreX phone app (Settings, then *Use testnet (developers)*) or the Dashboard wallet.
 
+What I could not test: on 19 Nov the QoreX Android app would not create an account on my phone (Oppo A58). It says "user not authenticated" every time, even with a screen lock and fingerprint set. I reported it in the QoreChain Discord. So every testnet signature in this README came from the QoreChain Dashboard wallet or from test keys, not from QoreX itself. The steps for a QoreX phone run are in [docs/QOREX_PHONE_TEST.md](docs/QOREX_PHONE_TEST.md).
+
 ---
 
 ## The problem
