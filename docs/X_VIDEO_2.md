@@ -27,3 +27,7 @@ Rob it: fenestella.vercel.app/lab
 Code and receipts: github.com/angelraph/fenestella
 
 #BuildBeforeQDay #QoreChain #PostQuantum #AIAgents
+
+---
+
+Correction (19 Nov): the stop line above overstates it. One press sends two transactions: one revokes every agent key, then a post-quantum signature pauses the vault. Fest page, README and site use the exact wording.

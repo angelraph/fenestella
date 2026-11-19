@@ -18,7 +18,7 @@ You seal the order to the agent, and sign its fingerprint with your post-quantum
 
 Or sign one standing permission, and it pays that payee by itself, inside your limits. After every payment it reports back, signed with its own post-quantum key and sealed so only you can read it.
 
-And if the agent's key ever leaks? One red button. A single signed transaction revokes the agent and freezes the vault. Nothing has to move, and the agent's whole record stays on the page, with receipts.
+And if the agent's key ever leaks? One red button. A single signed transaction revokes the agent and freezes the vault. *(Correction: it is two transactions from one press. One signed transaction revokes every agent key; a second, signed with your post-quantum key, pauses the vault. The agent is cut off by the first.)* Nothing has to move, and the agent's whole record stays on the page, with receipts.
 
 Now play the thief. The attack lab throws thirteen real attacks at it: stolen keys, forged signatures, phishing, prompt injection. Every one is refused. And every attempt anyone makes is published, failures and all.
 

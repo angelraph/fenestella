@@ -45,7 +45,7 @@
     {
       "id": "stop",
       "title": "One red button",
-      "text": "And if the agent's key ever leaks? One red button. A single signed transaction revokes the agent and freezes the vault. Nothing has to move, and the agent's whole record stays on the page, with receipts."
+      "text": "And if the agent's key ever leaks? One red button. One signed transaction revokes the agent, then your post-quantum signature freezes the vault. Nothing has to move, and the agent's whole record stays on the page, with receipts."
     },
     {
       "id": "lab",
