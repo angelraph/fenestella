@@ -1,28 +1,28 @@
 {
   "network": "testnet",
   "chainId": "qorechain-diana",
-  "scannedAt": "2026-11-20T08:12:17.505Z",
-  "durationMs": 1532405,
-  "accounts": 17237,
-  "notExposedYet": 13806,
-  "exposed": 3431,
-  "scanned": 3431,
+  "scannedAt": "2026-11-20T21:13:03.215Z",
+  "durationMs": 1744686,
+  "accounts": 17566,
+  "notExposedYet": 13815,
+  "exposed": 3751,
+  "scanned": 3751,
   "levels": {
-    "sealed": 2612,
-    "scoped": 22,
-    "open": 9,
-    "takeover": 788,
+    "sealed": 2812,
+    "scoped": 30,
+    "open": 3,
+    "takeover": 906,
     "unknown": 0
   },
-  "pqcRegistered": 2643,
-  "possessionProven": 1253,
-  "kemKeys": 354,
-  "liveWindows": 31,
-  "agentAccounts": 31,
+  "pqcRegistered": 2845,
+  "possessionProven": 1446,
+  "kemKeys": 473,
+  "liveWindows": 38,
+  "agentAccounts": 37,
   "failed": 0,
-  "valueAtRiskUqor": "5861796766",
-  "valueBehindOpenWindowsUqor": "20266250833",
-  "valueSealedUqor": "85473080894987331",
+  "valueAtRiskUqor": "7721981217",
+  "valueBehindOpenWindowsUqor": "387401860",
+  "valueSealedUqor": "85473033604809606",
   "history": [
     {
       "at": "2026-11-16T21:52:06.560Z",
@@ -131,6 +131,18 @@
         "unknown": 0
       },
       "valueAtRiskUqor": "5861796766"
+    },
+    {
+      "at": "2026-11-20T21:13:03.215Z",
+      "exposed": 3751,
+      "levels": {
+        "sealed": 2812,
+        "scoped": 30,
+        "open": 3,
+        "takeover": 906,
+        "unknown": 0
+      },
+      "valueAtRiskUqor": "7721981217"
     }
   ]
 }
