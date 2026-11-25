@@ -1,8 +1,8 @@
 {
   "network": "mainnet",
   "chainId": "qorechain-vladi",
-  "scannedAt": "2026-11-24T23:24:34.905Z",
-  "durationMs": 2020,
+  "scannedAt": "2026-11-25T09:50:21.525Z",
+  "durationMs": 6020,
   "accounts": 14737,
   "notExposedYet": 14487,
   "exposed": 250,
@@ -22,7 +22,7 @@
   "failed": 0,
   "valueAtRiskUqor": "59995281",
   "valueBehindOpenWindowsUqor": "0",
-  "valueSealedUqor": "1451461118769341",
+  "valueSealedUqor": "1451456290007254",
   "history": [
     {
       "at": "2026-11-16T21:52:11.243Z",
@@ -230,6 +230,18 @@
     },
     {
       "at": "2026-11-24T23:24:34.905Z",
+      "exposed": 250,
+      "levels": {
+        "sealed": 242,
+        "scoped": 0,
+        "open": 0,
+        "takeover": 8,
+        "unknown": 0
+      },
+      "valueAtRiskUqor": "59995281"
+    },
+    {
+      "at": "2026-11-25T09:50:21.525Z",
       "exposed": 250,
       "levels": {
         "sealed": 242,
