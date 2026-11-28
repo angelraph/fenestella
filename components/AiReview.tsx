@@ -52,16 +52,37 @@ export function AiReview({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [samplesState, setSamplesState] = useState<"loading" | "ready" | "failed">("loading");
+  const [samplesTry, setSamplesTry] = useState(0);
+
+  // The samples are built from the chain, and a cold server can take a while or
+  // fail once: retry a few times before saying so, so the buttons always appear.
   useEffect(() => {
     let live = true;
-    fetch(`/api/agent/analyze?ownerEvm=${ownerEvm}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((b: { samples?: { id: string; label: string; text: string }[] }) => live && setSamples(b.samples ?? []))
-      .catch(() => undefined);
+    setSamplesState("loading");
+    (async () => {
+      for (let attempt = 0; attempt < 4 && live; attempt++) {
+        if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
+        try {
+          const r = await fetch(`/api/agent/analyze?ownerEvm=${ownerEvm}`, { cache: "no-store" });
+          const b = (await r.json()) as { samples?: { id: string; label: string; text: string }[] };
+          if (r.ok && b.samples?.length) {
+            if (live) {
+              setSamples(b.samples);
+              setSamplesState("ready");
+            }
+            return;
+          }
+        } catch {
+          // try again
+        }
+      }
+      if (live) setSamplesState("failed");
+    })();
     return () => {
       live = false;
     };
-  }, [ownerEvm, reloadKey]);
+  }, [ownerEvm, reloadKey, samplesTry]);
 
   const ask = async () => {
     setBusy(true);
@@ -85,6 +106,15 @@ export function AiReview({
 
   return (
     <div className="stack">
+      {samples.length === 0 && samplesState === "loading" && <p className="faint">Loading the sample invoices from the chain…</p>}
+      {samples.length === 0 && samplesState === "failed" && (
+        <div className="row">
+          <span className="faint">The sample invoices could not be loaded just now.</span>
+          <button className="btn ghost small" onClick={() => setSamplesTry((n) => n + 1)}>
+            Try again
+          </button>
+        </div>
+      )}
       {samples.length > 0 && (
         <div className="row">
           <span className="faint">Try one:</span>
