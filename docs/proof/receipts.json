@@ -1,0 +1,698 @@
+{
+  "network": "qorechain-diana",
+  "note": "What each receipt linked from the docs shows. Checked daily by scripts/verify-receipts.mjs with @qorechain/qore-cli.",
+  "receipts": [
+    {
+      "hash": "98FAFAA72549D459214B8B74DDB7833497E05F92C216EEEE4CC880273AEF3BD2",
+      "doc": "README.md",
+      "claim": "- The agent paying a bill from its vault after its AI approved the sealed mandate: [receipt]",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella agent: pay bill 0",
+        "height": "10214527"
+      }
+    },
+    {
+      "hash": "2215D12E61B14CFD36CCB661183473D95EF75139A5FC1106D5E9AEF002D24175",
+      "doc": "README.md",
+      "claim": "- A stolen agent key paying a thief's bill, refused by the vault: [receipt]",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "contract",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: stolen agent key, pay a thief",
+        "height": "10214536"
+      }
+    },
+    {
+      "hash": "8210C92541CAE458D6C05C443F13EA913D421CF514985DEF4FF8452F8BA5A042",
+      "doc": "README.md",
+      "claim": "- The chain refusing a stolen agent key that tried to move 147 QOR: [receipt]",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: rogue agent drill",
+        "height": "10155228"
+      }
+    },
+    {
+      "hash": "70F7E7E8E86E5C41BDBC0C6584F7BE5BFD67A0C64EE3E201C2317C61D05A941D",
+      "doc": "README.md",
+      "claim": "- An agent running in an MCP app paying from the vault through Fenestella's relayer: [receipt]",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella relay: own agent pays bill 9",
+        "height": "10230682"
+      }
+    },
+    {
+      "hash": "14FF9AE4F27B0699E1DF786D3B2E9FD5651BEE17960F053DDDE11803E8474F2A",
+      "doc": "README.md",
+      "claim": "| Link the agent: spending rule allows only `Bills.pay`, 1 QOR a payment, 3 QOR a day; key permission `evm` only | Linked | [14FF9AE4…4F2A] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgCreateAbstractAccount",
+          "MsgUpdateSpendingRules",
+          "MsgRegisterAuthenticator"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: put the bill payer on a leash",
+        "height": "10155158"
+      }
+    },
+    {
+      "hash": "0A67AA9E11AD0A993CF24C39C1EDEE5D34585E1D16DAE84D496CFB4702014D4C",
+      "doc": "README.md",
+      "claim": "| Owner anchors the sealed mandate's SHA3-256 in a hybrid-signed self-send | Signed with ML-DSA-87 | [0A67AA9E…4D4C] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgSend"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella-mandate:e71b5d473b409cd4b3276813277ca109c9b39b703a8a670f9cc2512a1e0a2208",
+        "height": "10155201"
+      }
+    },
+    {
+      "hash": "7A9F06EE6FA017A934E58A51C61C3FB5F21AD73DF082F27E152C39C48D349D18",
+      "doc": "README.md",
+      "claim": "| Agent verifies the anchor, opens the envelope, checks bill #3, pays through the relayer | Paid 0.4 QOR, no window open | [7A9F06EE…9D18] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella agent: pay bill 3",
+        "height": "10155206"
+      }
+    },
+    {
+      "hash": "747710020E40E7DE71D9A379BBFEEB1FE886DBA70B585AF7FC50DE2489835557",
+      "doc": "README.md",
+      "claim": "| Stolen agent key: drain the account | **The chain** (spending rule: 1 uqor) | [74771002…] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella lab: stolen agent key, drain",
+        "height": "10217872"
+      }
+    },
+    {
+      "hash": "A192935583F5FB530020D162FFA9A6BE49891750B2565E03B934208131CC3546",
+      "doc": "README.md",
+      "claim": "| Stolen agent key: approve itself in the vault | **The chain** (only `payBill` allowed) | [A1929355…] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella lab: stolen agent key, approve itself",
+        "height": "10217874"
+      }
+    },
+    {
+      "hash": "24AED7E42B194D7EFA676482FE8F467B3222267A02A2F4CA9B498CE4048EDFEA",
+      "doc": "README.md",
+      "claim": "| Stolen agent key: pay a bill a thief posted | **The vault** (`PayeeNotApproved`) | [24AED7E4…] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "contract",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella lab: stolen agent key, pay a thief",
+        "height": "10217877"
+      }
+    },
+    {
+      "hash": "82A68CEA3D7672112D817073E9CDD461CDDD2BF57B76E3BC819049EFC3581A64",
+      "doc": "README.md",
+      "claim": "**Your own AI agent over MCP, live** (17 November 2026, [`scripts/spike-mcp.ts`] through a real MCP client): the owner linked the MCP server's key on the vault leash ([82A68CEA…]); the agent signed `p",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgUpdateSpendingRules",
+          "MsgRegisterAuthenticator"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: link my own agent (MCP)",
+        "height": "10229644"
+      }
+    },
+    {
+      "hash": "1A285C635AB301D9CEF0270A44E42ABD3880018FF10696895B8CCAFD23F6D4B1",
+      "doc": "README.md",
+      "claim": "**Your own AI agent over MCP, live** (17 November 2026, [`scripts/spike-mcp.ts`] through a real MCP client): the owner linked the MCP server's key on the vault leash ([82A68CEA…]); the agent signed `p",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella relay: own agent pays bill 8",
+        "height": "10229693"
+      }
+    },
+    {
+      "hash": "9E38AD190A62F849CEA7DE55E1996B9E6621DAF2155B5B2998A07E417DA5F166",
+      "doc": "README.md",
+      "claim": "**Stop and recover, live** (19 November 2026, [`scripts/spike-stop.ts`] driving the real page): a test account with 1 QOR in its vault linked the agent, then pressed **Stop the agent now**. One owner-",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgRevokeAuthenticator"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: stop everything",
+        "height": "10363573"
+      }
+    },
+    {
+      "hash": "E8649C0B23D54FA947C5B6784292F9EE30582B3DCBEB04FEB428F8B429CBFA8A",
+      "doc": "README.md",
+      "claim": "**Stop and recover, live** (19 November 2026, [`scripts/spike-stop.ts`] driving the real page): a test account with 1 QOR in its vault linked the agent, then pressed **Stop the agent now**. One owner-",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10363579"
+      }
+    },
+    {
+      "hash": "D007284BED7C00B5F2C8734D726091C26A72C0E42D8C423E54B71B23BEA44408",
+      "doc": "README.md",
+      "claim": "**Two-way messages, live:** after an autopay payment ([D0072…]) the agent posted a report ([0x5886c0fb…]): signed by its on-chain identity `qor19kdfkf3lrmyt5klerx6jhfgsxde87je0vqvs72` (hybrid ML-DSA-8",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella autopay: bill 7",
+        "height": "10218023"
+      }
+    },
+    {
+      "hash": "0x5886c0fb740569803b2d62eb8f5ec9b2395c88462757ec8646aba6be7cdf2c79",
+      "doc": "README.md",
+      "claim": "**Two-way messages, live:** after an autopay payment ([D0072…]) the agent posted a report ([0x5886c0fb…]): signed by its on-chain identity `qor19kdfkf3lrmyt5klerx6jhfgsxde87je0vqvs72` (hybrid ML-DSA-8",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10218030"
+      }
+    },
+    {
+      "hash": "C358F3EAA433A00F4AC285BCE5B0AAD6B58B81430DD93F98D8F81992E72E4DCB",
+      "doc": "README.md",
+      "claim": "**Two-way messages, live:** after an autopay payment ([D0072…]) the agent posted a report ([0x5886c0fb…]): signed by its on-chain identity `qor19kdfkf3lrmyt5klerx6jhfgsxde87je0vqvs72` (hybrid ML-DSA-8",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgRegisterKEMKey"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: publish my encryption key",
+        "height": "10217797"
+      }
+    },
+    {
+      "hash": "8A9C3D3CE57E0DCD3ADB157F0169D947D4B7295ABDB7FFCCB575223E9DADE9C3",
+      "doc": "README.md",
+      "claim": "| Owner signs a standing permission: pay Northwind up to 0.5 QOR a bill, 30 days (a memo on a 1 uqor self-send, ML-DSA-87 signed) | The agent reads it from the chain | [8A9C3D3C…E9C3] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgSend"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella-autopay:v1:on:0x59ecafb2c1b0b18ad15e5859950453b78f3165f9:500000:1797455224",
+        "height": "10216231"
+      }
+    },
+    {
+      "hash": "8846997C1C538692D17A319694ECD842B55A8965A96822DC32400142C3B65E51",
+      "doc": "README.md",
+      "claim": "| Round run by the owner: two 0.4 QOR bills | Both paid from the vault, each checked by the vault and approved by the AI | [8846997C…5E51], [E90CB50F…52C2] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella autopay: bill 2",
+        "height": "10216272"
+      }
+    },
+    {
+      "hash": "E90CB50F8722B57EDD83A7A8B8FE8CE113424070F0B168D0CDE04DDDFC3752C2",
+      "doc": "README.md",
+      "claim": "| Round run by the owner: two 0.4 QOR bills | Both paid from the vault, each checked by the vault and approved by the AI | [8846997C…5E51], [E90CB50F…52C2] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella autopay: bill 3",
+        "height": "10216276"
+      }
+    },
+    {
+      "hash": "C862CF3FDF63823E18B90ECC8A26B12751328B701D0C529DCBC82D1FDCE62E20",
+      "doc": "README.md",
+      "claim": "| Owner turns autopay off; next round | Nothing paid | [C862CF3F…2E20] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgSend"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella-autopay:v1:off:0x59ecafb2c1b0b18ad15e5859950453b78f3165f9",
+        "height": "10216278"
+      }
+    },
+    {
+      "hash": "708264807C316FF2E8EE7F4406832E5907F2CBBE8E13D8EA93429B9D4842467C",
+      "doc": "README.md",
+      "claim": "| Autopay on again; **scheduled round** (GitHub Actions, no human): a 0.3 QOR bill | Paid; the 0.6 QOR bill still left | [70826480…467C] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella autopay: bill 5",
+        "height": "10216327"
+      }
+    },
+    {
+      "hash": "D1595BFA6397862146D40E9520F755EF1842FAA8921D93E3CF5FFC096FB6650F",
+      "doc": "README.md",
+      "claim": "| Chain rule on the owner's account: the agent key may call only `AgentVault.payBill`, and move 1 uqor | Set | [D1595BFA…6650F] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgUpdateSpendingRules"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: leash on the vault",
+        "height": "10214501"
+      }
+    },
+    {
+      "hash": "0xc0e7516ce787364cc9976d4d6938ce0699b163941aed6cd831078f1f224fb0cf",
+      "doc": "README.md",
+      "claim": "| Owner deposits 1.5 QOR into the vault (its own EVM transaction, in a one-call window scoped to the vault) | Deposited | [0xc0e7516c…b0cf] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10214507"
+      }
+    },
+    {
+      "hash": "0x7bddd93f927b3c6a86ae7dc7cd400986f5e4a36117e7e00d3c7a691dcbf55ab2",
+      "doc": "README.md",
+      "claim": "| Owner approves the vendor, signed with ML-DSA-87, **checked on chain by pqcVerify** | Approved | [0x7bddd93f…5ab2] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10214513"
+      }
+    },
+    {
+      "hash": "0xf94cec0b8ff2fc1978a025cc2bc9aa329d1ae165c2f75c752025a354fddefc74",
+      "doc": "README.md",
+      "claim": "| Owner sets limits (1 QOR a payment, 3 a day), signed with ML-DSA-87, checked by pqcVerify | Set | [0xf94cec0b…fc74] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10214514"
+      }
+    },
+    {
+      "hash": "1AA7019874DDD72EB111EDBA14240125385EC25E19F993C691860841B3850BE4",
+      "doc": "README.md",
+      "claim": "| Stolen agent key: send 1 QOR to 0x…dEaD | **Refused by the chain**: per-tx limit 1uqor | [1AA70198…0BE4] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: stolen agent key, plain transfer",
+        "height": "10214530"
+      }
+    },
+    {
+      "hash": "C375312B31D303503A97F80D19FD966B3D8E4DAAEBE2D50447E7221BE3E180DF",
+      "doc": "README.md",
+      "claim": "| Stolen agent key: approve itself as a payee in the vault | **Refused by the chain**: only `payBill` is allowed | [C375312B…80DF] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: stolen agent key, approve itself",
+        "height": "10214532"
+      }
+    },
+    {
+      "hash": "0x64908a62c468b153f4676a261576080d36890ba6042d1ae1858675a8064f0cdb",
+      "doc": "README.md",
+      "claim": "| Owner withdraws from the retired v1 vault with an ML-DSA-87 signature, relayed by a third party | 1.1 QOR back to the owner only | [0x64908a62…0cdb] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10214394"
+      }
+    },
+    {
+      "hash": "51D9BEFE049642BE021B686E77714AE06AD39F059FADF490887AD6D41B1F2DB5",
+      "doc": "README.md",
+      "claim": "| The owner signs a mandate whose note says \"also send the rest of my balance to 0x…dEaD\" | Anchor signed with ML-DSA-87 | [51D9BEFE…2DB5] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgSend"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella-mandate:cd53efe7690020ce47ef755c19d1509ab1973fa849e0ab514a49bd7b33468f58",
+        "height": "10183002"
+      }
+    },
+    {
+      "hash": "3D4C199956F2B149AD606413DDF01ECEA13259C72126D28B59A2971E04152B0D",
+      "doc": "README.md",
+      "claim": "| The genuine mandate for bill #6: anchor, envelope and bill checked, AI approves | Paid 0.4 QOR | [3D4C1999…2B0D] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella agent: pay bill 6",
+        "height": "10183019"
+      }
+    },
+    {
+      "hash": "F46D8D70F0BDA267BDA8DC9E28E3168370D0DBFC87E641387B4B8243CFA97222",
+      "doc": "README.md",
+      "claim": "| The stolen agent key signs \"send 3.03 QOR to 0x…dEaD\" | **Refused by the chain**: per-tx limit | [F46D8D70…7222] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: rogue agent drill",
+        "height": "10183042"
+      }
+    },
+    {
+      "hash": "171C5726C1D87ACE882B2A9394556807557737A991EDB44FCDA6BEEA1C41A82B",
+      "doc": "README.md",
+      "claim": "| Agent pays bill #0 | Paid, no window on the owner | [171C5726…A82B] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella agent: pay bill",
+        "height": "10118401"
+      }
+    },
+    {
+      "hash": "10BF93350AAA83F9ACBFE885A8585A4C9EB5D69D7627D8785027BC57937E8FE4",
+      "doc": "README.md",
+      "claim": "| Agent tries to send the whole balance | **Refused**: per-tx limit | [10BF9335…8FE4] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella agent: drain attempt",
+        "height": "10118406"
+      }
+    },
+    {
+      "hash": "DB059DC5EA57E83E262BE91576DAB4216EAAC90F2714FCDFFDEC6CF6CB26D6F7",
+      "doc": "README.md",
+      "claim": "| Agent calls a contract its rule does not list (fUSD `transfer`) | **Refused**: call not listed | [DB059DC5…D6F7] |",
+      "expect": {
+        "outcome": "refused",
+        "stoppedBy": "chain-rule",
+        "messages": [
+          "MsgExecuteEVM"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella agent: off-list call",
+        "height": "10118408"
+      }
+    },
+    {
+      "hash": "BED3BCC1C24AE90E92B81C287CB8C721345CC38D6B94CFFD77247721084E0D8C",
+      "doc": "README.md",
+      "claim": "| **`requestWindow()` end to end**, live site, real Dashboard wallet (16 November 2026): the [demo dApp] asks for 3 transactions, 0.5 QOR, ~10 minutes, one contract (testnet fUSD); the owner approves ",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgOpenEVMWindow"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: window request",
+        "height": "10183579"
+      }
+    },
+    {
+      "hash": "26A809D636C386B6E4118501072583CEB8FBB41BF349B519BB42660EA606C245",
+      "doc": "README.md",
+      "claim": "| From the live site with a real wallet: open a plain-transfers window (5 txs, 2 QOR, ~30 min) | Live, `native_only` | [26A809D6…C245] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgOpenEVMWindow"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: open window",
+        "height": "10117881"
+      }
+    },
+    {
+      "hash": "9DB6BDF83758857F3B6F0CEA848A316073D40568613BDE14BE4A5BE4869AE319",
+      "doc": "README.md",
+      "claim": "| Close it with the console's button | Closed, account sealed | [9DB6BDF8…E319] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgCloseEVMWindow"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella: close window",
+        "height": "10117907"
+      }
+    },
+    {
+      "hash": "F31ADD3F91E0EE40956C54D3B11D7E6FDB43455F65A8FCC733ED85D18A72FEA3",
+      "doc": "README.md",
+      "claim": "| Script: register ML-DSA-87 with proof of possession | Registered | [F31ADD3F…FEA3] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgRegisterPQCKeyV2"
+        ],
+        "tier": "enrollment",
+        "height": "10047404"
+      }
+    },
+    {
+      "hash": "E7A6AFC9434D795C69CECCA639E9B07831E412F4C10D5B02F12E7580E4FD1885",
+      "doc": "README.md",
+      "claim": "| Script: open a window scoped to one contract | Live, 1 target | [E7A6AFC9…1885] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgOpenEVMWindow"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella spike: open",
+        "height": "10047406"
+      }
+    },
+    {
+      "hash": "A46812203443CB1D87BE987F1165F3177DBEF1B29005E4639DB69CBB778BD0DF",
+      "doc": "README.md",
+      "claim": "| Script: close it | Closed | [A4681220…D0DF] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgCloseEVMWindow"
+        ],
+        "tier": "pqc",
+        "pqcVerified": true,
+        "memo": "fenestella spike: close",
+        "height": "10047408"
+      }
+    },
+    {
+      "hash": "0xfa030023c46c526dd07eab33be5cda41c3de3e9a5aaced2498dfe084cbd7541f",
+      "doc": "README.md",
+      "claim": "| The dev account's ML-DSA-87 key signs the exact bytes `messageFor()` returns; anyone relays it | Recorded; `isAttested` is true | [0xfa030023…541f] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10176147"
+      }
+    },
+    {
+      "hash": "0x18a2e6669225b69c7e193c2777fcb16d33aba6089c48d6e964d7ba367e125c6f",
+      "doc": "README.md",
+      "claim": "| `FenestellaReceipts` | `0xc520f7084758a3faafd2d8ffb7432c87787a1acc` | [receipt] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10047565"
+      }
+    },
+    {
+      "hash": "0x1120aa567d71893b62d678d0ff637581c2baa3eaf54c212820ce0a30d3227a2c",
+      "doc": "README.md",
+      "claim": "| `Bills` | `0xa8006f2378e8307ffdb0d46fc89668bc69d00eb0` | [receipt] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10047566"
+      }
+    },
+    {
+      "hash": "0xef8d536b3874de460cf64e871a683e6b7303479cbbef008e3627599db8051541",
+      "doc": "README.md",
+      "claim": "| `AgentVault` (v2, after its audit) | `0x51fb13cc0513f02cd16e98f9b4a9f233027c2551` | [receipt] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10214418"
+      }
+    },
+    {
+      "hash": "0x0c1fdf0e66e8d3c1518c315cab66aff58e5746b8fe573f305b3f56ca38f40976",
+      "doc": "README.md",
+      "claim": "| `AgentReports` | `0x2b8d4cdcdc7a2efbcfca7691b58605dc1bc91462` | [receipt] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10217733"
+      }
+    },
+    {
+      "hash": "0x966e2e1f21f98404a4acb3783cb0dc47f9ff649936bd5ff2d0c27fccbf20ecb5",
+      "doc": "README.md",
+      "claim": "| `AgentVault` v1 (retired) | `0xe25290a955dfbaa9360d90ddcd2f47c0969b3d08` | [receipt] |",
+      "expect": {
+        "outcome": "landed",
+        "messages": [
+          "MsgEthereumTx"
+        ],
+        "tier": "classical",
+        "height": "10188229"
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+name: Receipts still say what the docs claim
+
+# Every day, on a machine we do not control and with no secrets configured,
+# re-read every transaction the docs link to from the QoreChain testnet with
+# QoreChain's own read-only CLI (@qorechain/qore-cli), and fail if any receipt
+# no longer shows what the docs say: landed or refused, by which layer, with
+# which messages, and with a verified ML-DSA-87 signature.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  push:
+    paths:
+      - "README.md"
+      - "THREAT_MODEL.md"
+      - "AUDIT.md"
+      - "AI_USAGE.md"
+      - "docs/proof/receipts.json"
+      - "scripts/verify-receipts.mjs"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Re-check every receipt on the testnet
+        run: node scripts/verify-receipts.mjs

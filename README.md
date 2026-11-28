@@ -83,6 +83,10 @@ That design is right, and almost nobody could use it:
 
 Each link opens Fenestella's receipt page, which reads the transaction from the testnet REST API and also links the raw JSON. (The QoreChain explorer opens on mainnet; switch it to Testnet at the top before following a hash there.)
 
+**Checked every day, by a machine I don't control.** Every receipt linked from these docs is listed in [`docs/proof/receipts.json`](docs/proof/receipts.json) with what it shows: landed or refused, refused by the chain's rule or by a contract, which messages, and whether its ML-DSA-87 signature verifies. A [GitHub Actions job](.github/workflows/receipts.yml) re-reads all of them from the testnet once a day with QoreChain's own read-only CLI ([`@qorechain/qore-cli`](https://www.npmjs.com/package/@qorechain/qore-cli)), with no keys and no secrets, and fails if one no longer says what the docs claim, or if a receipt in the docs is missing from the list. Run it yourself: `npm ci && npm run verify:receipts`.
+
+**What cryptography is in it.** [QoreScan](docs/proof/QORESCAN.md), QoreChain's crypto inventory tool, over the contracts, the accounts and the site's TLS: ML-DSA-87 behind every vault admin action, no `ecrecover` anywhere, and the site's TLS already on a post-quantum key exchange. Full CycloneDX CBOM and a DORA mapping are in [`docs/proof`](docs/proof).
+
 **The bill-paying agent, from the live site with a real wallet** (owner `qor1x2fqs3lpczt2yz2q2rvh0mjvft9rse30c5tv07`, the QoreChain Dashboard wallet, 15 November 2026)
 
 | Step | Result | Receipt |
@@ -308,7 +312,8 @@ lib/wallets/         wallet detection
 packages/connect/    @fenestella/connect: requestWindow()
 packages/mcp/        @fenestella/mcp: the MCP server for AI agents
 contracts/           Foundry: QorePQC, FenestellaReceipts, Bills, tests
-scripts/             spikes, attack, deploy, drill, receipt, accounts
+scripts/             spikes, attack, deploy, drill, receipt, accounts, verify-receipts (daily check)
+docs/proof/          receipts.json (what every receipt shows), QoreScan CBOM and its reading
 tests/               unit tests (vitest) and end-to-end tests (Playwright)
 video/               how the demo video was made: script, voice, recorder, editor
 ```
@@ -319,6 +324,8 @@ video/               how the demo video was made: script, voice, recorder, edito
 - [`@qorechain/qorex-types`](https://www.npmjs.com/package/@qorechain/qorex-types): QoreX detection and `signAndBroadcast`.
 - [`@qorechain/qoreseal`](https://www.npmjs.com/package/@qorechain/qoreseal): sealing and opening mandates.
 - [`@qorechain/wallet-adapter`](https://www.npmjs.com/package/@qorechain/wallet-adapter): the chain descriptor for Keplr-family wallets.
+- [`@qorechain/qore-cli`](https://www.npmjs.com/package/@qorechain/qore-cli) (the MCP server and qore CLI kit): the daily re-check of every receipt, including each transaction's ML-DSA-87 verification.
+- [`@qorechain/qorescan`](https://www.npmjs.com/package/@qorechain/qorescan): the crypto inventory (CBOM) of the contracts, accounts and site.
 - The agent's AI: [OpenAI](https://platform.openai.com/) `gpt-5-mini` through the Chat Completions API (tool calls, structured outputs) on the live site, or [Claude](https://www.anthropic.com/claude) through [`@anthropic-ai/sdk`](https://www.npmjs.com/package/@anthropic-ai/sdk) (tool runner, structured outputs).
 - Next.js, React, viem, vitest, Foundry, Playwright and ffmpeg (video), Microsoft Edge neural voice "Andrew" (narration).
 

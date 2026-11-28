@@ -18,7 +18,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "spike": "tsx scripts/spike-window.ts",
-    "attack": "tsx scripts/attack.ts"
+    "attack": "tsx scripts/attack.ts",
+    "verify:receipts": "node scripts/verify-receipts.mjs",
+    "qorescan": "qorescan scan --network testnet --solidity contracts/src --address qor18ydtk2rx0wma4csyl9353kj0z29w645daa47z9 --address qor1qwa03dpa0as9kykh5mdqwqrcsf5e22lrt34rrk --tls fenestella.vercel.app:443 --out docs/proof/qorescan-cbom.json && qorescan report --framework dora --cbom docs/proof/qorescan-cbom.json --out docs/proof/qorescan-dora.md"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
@@ -39,6 +41,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
+    "@qorechain/qore-cli": "^0.1.1",
+    "@qorechain/qorescan": "^0.1.0",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
