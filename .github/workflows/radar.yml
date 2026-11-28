@@ -14,7 +14,9 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # Testnet has grown past 5,000 accounts and its RPC throttles busy readers:
+    # one pass now takes ~37 minutes, so leave room for the slower retry passes.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
